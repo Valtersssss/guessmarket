@@ -2,10 +2,16 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from './lib/supabase'
-import { Car, Building2, Key, Briefcase, Smartphone, MapPin, Dice5, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Clock, LayoutGrid, Users, User, Copy, Check } from 'lucide-react'
+import { Car, Building2, Key, Briefcase, Smartphone, MapPin, Dice5, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Clock, LayoutGrid, Users, User, Copy, Check, Calendar, Gauge, Fuel, Settings2, Ruler, Layers, Palette, ShieldCheck } from 'lucide-react'
 
 const ROUNDS_COUNT = 5
-const TIMER_SECONDS = 20
+const TIMER_OPTIONS = [
+  { key: 15, label: '15s' },
+  { key: 30, label: '30s' },
+  { key: 45, label: '45s' },
+  { key: 60, label: '60s' },
+  { key: 0, label: 'Bez laika' },
+]
 
 const CATEGORY_ICONS = {
   auto: Car,
@@ -23,6 +29,48 @@ const CATEGORY_FILTERS = [
   { key: 'zeme', label: 'Zeme', icon: MapPin },
 ]
 
+// Prioritātes secība - svarīgākie lauki vispirms (pēc atslēgvārda meklēšanas nosaukumā)
+const SPEC_PRIORITY = [
+  'gads', 'izlaiduma',
+  'nobraukum',
+  'motors', 'dzinēj',
+  'ātrumkārb',
+  'istabas', 'ist.',
+  'platība',
+  'stāv',
+  'sērija',
+  'virsbūv',
+  'krāsa',
+  'tehniskā apskate',
+]
+
+const SPEC_ICONS = [
+  { match: ['gads', 'izlaiduma'], icon: Calendar },
+  { match: ['nobraukum'], icon: Gauge },
+  { match: ['motors', 'dzinēj'], icon: Fuel },
+  { match: ['ātrumkārb'], icon: Settings2 },
+  { match: ['platība', 'm²'], icon: Ruler },
+  { match: ['stāv'], icon: Layers },
+  { match: ['krāsa'], icon: Palette },
+  { match: ['tehniskā apskate'], icon: ShieldCheck },
+]
+
+function getSpecIcon(label) {
+  const lower = label.toLowerCase()
+  const found = SPEC_ICONS.find((entry) => entry.match.some((m) => lower.includes(m)))
+  return found ? found.icon : Dice5
+}
+
+function sortSpecs(specEntries) {
+  return [...specEntries].sort((a, b) => {
+    const aIndex = SPEC_PRIORITY.findIndex((p) => a[0].toLowerCase().includes(p))
+    const bIndex = SPEC_PRIORITY.findIndex((p) => b[0].toLowerCase().includes(p))
+    const aRank = aIndex === -1 ? 999 : aIndex
+    const bRank = bIndex === -1 ? 999 : bIndex
+    return aRank - bRank
+  })
+}
+
 function getCategoryIcon(category) {
   return CATEGORY_ICONS[category] || Dice5
 }
@@ -35,7 +83,7 @@ function calculateScore(guess, correctPrice) {
 }
 
 function generateRoomCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // bez viegli sajaucamiem simboliem (0/O, 1/I)
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
   let code = ''
   for (let i = 0; i < 5; i++) {
     code += chars[Math.floor(Math.random() * chars.length)]
@@ -47,6 +95,7 @@ export default function Home() {
   // 'menu' | 'solo-setup' | 'create-room' | 'room-created' | 'game'
   const [mode, setMode] = useState('menu')
   const [selectedCategory, setSelectedCategory] = useState('all')
+  const [selectedTimer, setSelectedTimer] = useState(30)
   const [playerName, setPlayerName] = useState('')
   const [roomCode, setRoomCode] = useState('')
   const [creatingRoom, setCreatingRoom] = useState(false)
@@ -63,7 +112,7 @@ export default function Home() {
   const [gameFinished, setGameFinished] = useState(false)
   const [animateIn, setAnimateIn] = useState(true)
   const [photoIndex, setPhotoIndex] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS)
+  const [timeLeft, setTimeLeft] = useState(selectedTimer)
   const guessRef = useRef(guess)
   const revealedRef = useRef(revealed)
 
@@ -140,13 +189,14 @@ export default function Home() {
   useEffect(() => {
     setAnimateIn(false)
     setPhotoIndex(0)
-    setTimeLeft(TIMER_SECONDS)
+    setTimeLeft(selectedTimer)
     const t = setTimeout(() => setAnimateIn(true), 20)
     return () => clearTimeout(t)
-  }, [currentIndex])
+  }, [currentIndex, selectedTimer])
 
   useEffect(() => {
     if (mode !== 'game' || questions.length === 0 || gameFinished) return
+    if (selectedTimer === 0) return
 
     const interval = setInterval(() => {
       if (revealedRef.current) return
@@ -167,7 +217,7 @@ export default function Home() {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [currentIndex, questions, gameFinished, mode])
+  }, [currentIndex, questions, gameFinished, mode, selectedTimer])
 
   // --- GALVENĀ IZVĒLNE ---
   if (mode === 'menu') {
@@ -211,7 +261,7 @@ export default function Home() {
     )
   }
 
-  // --- SOLO: kategorijas izvēle ---
+  // --- SOLO: kategorijas un laika izvēle ---
   if (mode === 'solo-setup') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -239,6 +289,26 @@ export default function Home() {
                   >
                     <CatIcon className="w-6 h-6" strokeWidth={2.2} />
                     <span className="text-sm font-semibold">{cat.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <p className="text-slate-700 text-sm font-semibold mb-3">Laiks vienam raundam</p>
+            <div className="grid grid-cols-5 gap-2 mb-6">
+              {TIMER_OPTIONS.map((opt) => {
+                const isSelected = selectedTimer === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => setSelectedTimer(opt.key)}
+                    className={`rounded-xl py-3 border-2 transition-all text-xs font-bold ${
+                      isSelected
+                        ? 'bg-orange-50 border-orange-500 text-orange-600'
+                        : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'
+                    }`}
+                  >
+                    {opt.label}
                   </button>
                 )
               })}
@@ -415,11 +485,12 @@ export default function Home() {
     ? question.image_urls
     : (question.image_url ? [question.image_url] : [])
   const specs = question.specs && typeof question.specs === 'object' ? question.specs : {}
-  const specEntries = Object.entries(specs).filter(([key]) => key !== 'Marka')
+  const rawSpecEntries = Object.entries(specs).filter(([key]) => key !== 'Marka')
+  const specEntries = sortSpecs(rawSpecEntries).slice(0, 4)
 
   const guessNum = Number(guess)
   const diffAmount = revealed ? guessNum - question.correct_price : 0
-  const timerPct = (timeLeft / TIMER_SECONDS) * 100
+  const timerPct = selectedTimer > 0 ? (timeLeft / selectedTimer) * 100 : 100
   const timerColor = timeLeft <= 5 ? 'text-rose-500' : timeLeft <= 10 ? 'text-amber-500' : 'text-orange-500'
   const timerBarColor = timeLeft <= 5 ? 'bg-rose-500' : timeLeft <= 10 ? 'bg-amber-500' : 'bg-orange-500'
 
@@ -456,7 +527,7 @@ export default function Home() {
             RAUNDS {currentIndex + 1}/{questions.length}
           </span>
           <div className="flex items-center gap-2">
-            {!revealed && (
+            {!revealed && selectedTimer > 0 && (
               <span className={`flex items-center gap-1 text-xs font-bold ${timerColor}`}>
                 <Clock className="w-3.5 h-3.5" />
                 {timeLeft}s
@@ -475,7 +546,7 @@ export default function Home() {
           />
         </div>
 
-        {!revealed && (
+        {!revealed && selectedTimer > 0 && (
           <div className="w-full h-1 bg-slate-200 rounded-full mb-4 overflow-hidden">
             <div
               className={`h-full ${timerBarColor} rounded-full transition-all duration-1000 ease-linear`}
@@ -483,7 +554,7 @@ export default function Home() {
             />
           </div>
         )}
-        {revealed && <div className="mb-4" />}
+        {(revealed || selectedTimer === 0) && <div className="mb-4" />}
 
         <div
           className={`bg-white rounded-3xl overflow-hidden shadow-xl border border-slate-100 transition-all duration-300 flex flex-col md:flex-row ${
@@ -541,16 +612,24 @@ export default function Home() {
               </div>
 
               <h1 className="text-xl font-bold text-slate-900 mb-1 leading-snug">{question.title}</h1>
-              <p className="text-slate-500 text-sm mb-4">{question.details}</p>
+              <p className="text-slate-500 text-sm mb-5">{question.details}</p>
 
               {specEntries.length > 0 && (
-                <div className="grid grid-cols-2 gap-2">
-                  {specEntries.map(([label, value]) => (
-                    <div key={label} className="bg-slate-50 border border-slate-100 rounded-xl px-3 py-2">
-                      <p className="text-slate-400 text-[9px] font-bold uppercase mb-0.5">{label}</p>
-                      <p className="text-slate-900 text-xs font-semibold">{value}</p>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-2 gap-3">
+                  {specEntries.map(([label, value]) => {
+                    const SpecIcon = getSpecIcon(label)
+                    return (
+                      <div key={label} className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3">
+                        <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                          <SpecIcon className="w-4 h-4 text-slate-500" strokeWidth={2} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-slate-900 text-sm font-bold truncate">{value}</p>
+                          <p className="text-slate-400 text-[10px] font-medium truncate">{label}</p>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
