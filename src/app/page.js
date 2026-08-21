@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from './lib/supabase'
-import { Car, Building2, Key, Briefcase, Smartphone, MapPin, Dice5, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Clock, LayoutGrid, Users, User, Copy, Check, Calendar, Gauge, Fuel, Settings2, Ruler, Layers, Palette, ShieldCheck } from 'lucide-react'
+import { Car, Building2, Key, Briefcase, Smartphone, MapPin, Dice5, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Clock, LayoutGrid, Users, User, Copy, Check, Calendar, Gauge, Fuel, Settings2, Ruler, Layers, Palette, ShieldCheck, DoorOpen } from 'lucide-react'
 
 const ROUNDS_COUNT = 5
 const TIMER_OPTIONS = [
@@ -29,7 +29,6 @@ const CATEGORY_FILTERS = [
   { key: 'zeme', label: 'Zeme', icon: MapPin },
 ]
 
-// Prioritātes secība - svarīgākie lauki vispirms (pēc atslēgvārda meklēšanas nosaukumā)
 const SPEC_PRIORITY = [
   'gads', 'izlaiduma',
   'nobraukum',
@@ -92,14 +91,17 @@ function generateRoomCode() {
 }
 
 export default function Home() {
-  // 'menu' | 'solo-setup' | 'create-room' | 'room-created' | 'game'
+  // 'menu' | 'solo-setup' | 'create-room' | 'room-created' | 'join-room' | 'joined-room' | 'game'
   const [mode, setMode] = useState('menu')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedTimer, setSelectedTimer] = useState(30)
   const [playerName, setPlayerName] = useState('')
   const [roomCode, setRoomCode] = useState('')
+  const [joinCodeInput, setJoinCodeInput] = useState('')
   const [creatingRoom, setCreatingRoom] = useState(false)
+  const [joiningRoom, setJoiningRoom] = useState(false)
   const [roomError, setRoomError] = useState('')
+  const [joinError, setJoinError] = useState('')
   const [codeCopied, setCodeCopied] = useState(false)
 
   const [questions, setQuestions] = useState([])
@@ -180,6 +182,47 @@ export default function Home() {
     setCreatingRoom(false)
   }
 
+  async function handleJoinRoom() {
+    if (!playerName.trim() || !joinCodeInput.trim()) return
+    setJoiningRoom(true)
+    setJoinError('')
+
+    const normalizedCode = joinCodeInput.trim().toUpperCase()
+
+    const { data: room, error: roomErr } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('code', normalizedCode)
+      .single()
+
+    if (roomErr || !room) {
+      setJoinError('Istaba ar šo kodu nav atrasta. Pārbaudi kodu.')
+      setJoiningRoom(false)
+      return
+    }
+
+    if (room.status !== 'lobby') {
+      setJoinError('Šī spēle jau ir sākusies vai beigusies.')
+      setJoiningRoom(false)
+      return
+    }
+
+    const { error: playerErr } = await supabase
+      .from('players')
+      .insert({ room_id: room.id, name: playerName.trim(), is_host: false })
+
+    if (playerErr) {
+      console.error(playerErr)
+      setJoinError('Neizdevās pievienoties istabai. Mēģini vēlreiz.')
+      setJoiningRoom(false)
+      return
+    }
+
+    setRoomCode(normalizedCode)
+    setMode('joined-room')
+    setJoiningRoom(false)
+  }
+
   function copyRoomCode() {
     navigator.clipboard.writeText(roomCode)
     setCodeCopied(true)
@@ -253,6 +296,19 @@ export default function Home() {
               <div>
                 <p className="text-slate-900 font-bold text-sm">Izveidot istabu</p>
                 <p className="text-slate-500 text-xs">Spēlē ar draugiem</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setMode('join-room')}
+              className="flex items-center gap-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 transition-all text-left"
+            >
+              <div className="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+                <DoorOpen className="w-5 h-5 text-orange-500" strokeWidth={2.2} />
+              </div>
+              <div>
+                <p className="text-slate-900 font-bold text-sm">Pievienoties istabai</p>
+                <p className="text-slate-500 text-xs">Ievadi drauga istabas kodu</p>
               </div>
             </button>
           </div>
@@ -421,6 +477,99 @@ export default function Home() {
                 setRoomCode('')
               }}
               className="w-full mt-4 text-slate-400 hover:text-slate-600 font-semibold text-xs py-2 transition-colors"
+            >
+              ← Atpakaļ uz izvēlni
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // --- PIEVIENOŠANĀS ISTABAI: vārds + kods ---
+  if (mode === 'join-room') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-black text-slate-900 mb-2">Cikmaksā.lv</h1>
+            <p className="text-slate-500 text-sm">Ievadi drauga istabas kodu</p>
+          </div>
+
+          <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
+            <p className="text-slate-700 text-sm font-semibold mb-3">Tavs vārds</p>
+            <input
+              type="text"
+              placeholder="Ievadi savu vārdu"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              maxLength={20}
+              autoFocus
+              className="w-full bg-slate-50 text-slate-900 text-lg font-semibold rounded-2xl px-4 py-4 outline-none border-2 border-slate-200 focus:border-orange-500 transition-colors mb-4"
+            />
+
+            <p className="text-slate-700 text-sm font-semibold mb-3">Istabas kods</p>
+            <input
+              type="text"
+              placeholder="piem. A7K9P"
+              value={joinCodeInput}
+              onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === 'Enter' && playerName.trim() && joinCodeInput.trim() && handleJoinRoom()}
+              maxLength={5}
+              className="w-full bg-slate-50 text-slate-900 text-2xl font-black tracking-[0.2em] text-center rounded-2xl px-4 py-4 outline-none border-2 border-slate-200 focus:border-orange-500 transition-colors mb-4 uppercase"
+            />
+
+            {joinError && (
+              <p className="text-rose-500 text-sm font-medium mb-4">{joinError}</p>
+            )}
+
+            <button
+              onClick={handleJoinRoom}
+              disabled={!playerName.trim() || !joinCodeInput.trim() || joiningRoom}
+              className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold text-base rounded-2xl py-4 transition-all active:scale-[0.98]"
+            >
+              {joiningRoom ? 'Pievienojos...' : 'Pievienoties'}
+            </button>
+
+            <button
+              onClick={() => setMode('menu')}
+              className="w-full mt-2 text-slate-400 hover:text-slate-600 font-semibold text-xs py-2 transition-colors"
+            >
+              ← Atpakaļ
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // --- PIEVIENOJIES ISTABAI: apstiprinājums ---
+  if (mode === 'joined-room') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-black text-slate-900 mb-2">Pievienojies!</h1>
+            <p className="text-slate-500 text-sm">Gaidi, kamēr saimnieks sāks spēli</p>
+          </div>
+
+          <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 text-center">
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-wide mb-3">Istaba</p>
+            <p className="text-5xl font-black text-slate-900 tracking-[0.2em] mb-6">{roomCode}</p>
+
+            <p className="text-slate-500 text-sm mb-2">Sveiks, <span className="font-bold text-slate-900">{playerName}</span>!</p>
+            <p className="text-slate-400 text-xs">
+              Nākamais solis: lobby ar visu spēlētāju sarakstu reāllaikā vēl tiks pievienots
+            </p>
+
+            <button
+              onClick={() => {
+                setMode('menu')
+                setPlayerName('')
+                setRoomCode('')
+                setJoinCodeInput('')
+              }}
+              className="w-full mt-6 text-slate-400 hover:text-slate-600 font-semibold text-xs py-2 transition-colors"
             >
               ← Atpakaļ uz izvēlni
             </button>
@@ -600,13 +749,13 @@ export default function Home() {
             </div>
           )}
 
-          <div className="w-full md:w-1/2 flex flex-col max-h-[500px]">
+          <div className="w-full md:w-1/2 flex flex-col max-h-[500px] bg-slate-100">
             <div className="overflow-y-auto flex-1 min-h-0 p-6">
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center">
-                  <Icon className="w-4 h-4 text-orange-500" strokeWidth={2.2} />
+                <div className="w-9 h-9 rounded-xl bg-orange-100 flex items-center justify-center">
+                  <Icon className="w-4 h-4 text-orange-600" strokeWidth={2.2} />
                 </div>
-                <span className="text-slate-500 text-xs font-bold uppercase tracking-wide">
+                <span className="text-slate-600 text-xs font-bold uppercase tracking-wide">
                   {question.category.replace('_', ' ')}
                 </span>
               </div>
@@ -619,13 +768,13 @@ export default function Home() {
                   {specEntries.map(([label, value]) => {
                     const SpecIcon = getSpecIcon(label)
                     return (
-                      <div key={label} className="flex items-center gap-3 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3">
-                        <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center shrink-0">
-                          <SpecIcon className="w-4 h-4 text-slate-500" strokeWidth={2} />
+                      <div key={label} className="flex items-center gap-3 bg-white border-2 border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
+                        <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
+                          <SpecIcon className="w-4 h-4 text-orange-500" strokeWidth={2.3} />
                         </div>
                         <div className="min-w-0">
                           <p className="text-slate-900 text-sm font-bold truncate">{value}</p>
-                          <p className="text-slate-400 text-[10px] font-medium truncate">{label}</p>
+                          <p className="text-slate-400 text-[10px] font-semibold uppercase truncate">{label}</p>
                         </div>
                       </div>
                     )
@@ -634,7 +783,7 @@ export default function Home() {
               )}
             </div>
 
-            <div className="p-6 pt-4 border-t border-slate-100 bg-white shrink-0">
+            <div className="p-6 pt-4 border-t border-slate-200 bg-white shrink-0">
               {!revealed && (
                 <div className="flex flex-col gap-3">
                   <div className="relative">
