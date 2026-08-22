@@ -2,9 +2,15 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from './lib/supabase'
-import { Car, Building2, Key, Briefcase, Smartphone, MapPin, Dice5, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Clock, LayoutGrid, Users, User, Copy, Check, Calendar, Gauge, Fuel, Settings2, Ruler, Layers, Palette, ShieldCheck, DoorOpen, Crown, Loader2 } from 'lucide-react'
+import { Car, Building2, Key, Briefcase, Smartphone, MapPin, Dice5, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Clock, LayoutGrid, Users, User, Copy, Check, Calendar, Gauge, Fuel, Settings2, Ruler, Layers, Palette, ShieldCheck, DoorOpen, Crown, Loader2, Trophy, Medal } from 'lucide-react'
 
-const ROUNDS_COUNT = 5
+const DEFAULT_ROUNDS = 5
+const ROUND_OPTIONS = [
+  { key: 5, label: '5' },
+  { key: 10, label: '10' },
+  { key: 15, label: '15' },
+]
+
 const TIMER_OPTIONS = [
   { key: 15, label: '15s' },
   { key: 30, label: '30s' },
@@ -95,9 +101,11 @@ export default function Home() {
   const [mode, setMode] = useState('menu')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedTimer, setSelectedTimer] = useState(30)
+  const [selectedRounds, setSelectedRounds] = useState(DEFAULT_ROUNDS)
   const [playerName, setPlayerName] = useState('')
   const [roomCode, setRoomCode] = useState('')
   const [roomId, setRoomId] = useState(null)
+  const [playerId, setPlayerId] = useState(null)
   const [isHost, setIsHost] = useState(false)
   const [joinCodeInput, setJoinCodeInput] = useState('')
   const [creatingRoom, setCreatingRoom] = useState(false)
@@ -107,6 +115,8 @@ export default function Home() {
   const [codeCopied, setCodeCopied] = useState(false)
   const [lobbyPlayers, setLobbyPlayers] = useState([])
   const [startingGame, setStartingGame] = useState(false)
+  const [answeredCount, setAnsweredCount] = useState(0)
+  const [finalLeaderboard, setFinalLeaderboard] = useState(null)
 
   const [questions, setQuestions] = useState([])
   const [loadingQuestions, setLoadingQuestions] = useState(false)
@@ -121,6 +131,7 @@ export default function Home() {
   const [timeLeft, setTimeLeft] = useState(selectedTimer)
   const guessRef = useRef(guess)
   const revealedRef = useRef(revealed)
+  const totalScoreRef = useRef(totalScore)
 
   useEffect(() => {
     guessRef.current = guess
@@ -129,6 +140,10 @@ export default function Home() {
   useEffect(() => {
     revealedRef.current = revealed
   }, [revealed])
+
+  useEffect(() => {
+    totalScoreRef.current = totalScore
+  }, [totalScore])
 
   async function startSoloGame() {
     setLoadingQuestions(true)
@@ -144,7 +159,7 @@ export default function Home() {
       console.error('Kļūda ielādējot jautājumus:', error)
     } else {
       const shuffled = [...data].sort(() => Math.random() - 0.5)
-      setQuestions(shuffled.slice(0, ROUNDS_COUNT))
+      setQuestions(shuffled.slice(0, selectedRounds))
       setMode('game')
     }
     setLoadingQuestions(false)
@@ -162,7 +177,7 @@ export default function Home() {
       .insert({
         code,
         status: 'lobby',
-        max_rounds: ROUNDS_COUNT,
+        max_rounds: selectedRounds,
         category: selectedCategory,
         timer_seconds: selectedTimer,
       })
@@ -176,9 +191,11 @@ export default function Home() {
       return
     }
 
-    const { error: playerErr } = await supabase
+    const { data: player, error: playerErr } = await supabase
       .from('players')
       .insert({ room_id: room.id, name: playerName.trim(), is_host: true })
+      .select()
+      .single()
 
     if (playerErr) {
       console.error(playerErr)
@@ -189,6 +206,7 @@ export default function Home() {
 
     setRoomCode(code)
     setRoomId(room.id)
+    setPlayerId(player.id)
     setIsHost(true)
     setMode('lobby')
     setCreatingRoom(false)
@@ -219,9 +237,11 @@ export default function Home() {
       return
     }
 
-    const { error: playerErr } = await supabase
+    const { data: player, error: playerErr } = await supabase
       .from('players')
       .insert({ room_id: room.id, name: playerName.trim(), is_host: false })
+      .select()
+      .single()
 
     if (playerErr) {
       console.error(playerErr)
@@ -232,6 +252,7 @@ export default function Home() {
 
     setRoomCode(normalizedCode)
     setRoomId(room.id)
+    setPlayerId(player.id)
     setIsHost(false)
     setMode('lobby')
     setJoiningRoom(false)
@@ -243,9 +264,9 @@ export default function Home() {
     setTimeout(() => setCodeCopied(false), 2000)
   }
 
-  // --- LOBBY: spēlētāju saraksts + gaidīšana uz spēles sākumu (reāllaikā) ---
+  // --- LOBBY + SPĒLES LAIKĀ: spēlētāju saraksts reāllaikā, spēles sākuma sinhronizācija ---
   useEffect(() => {
-    if (mode !== 'lobby' || !roomId) return
+    if ((mode !== 'lobby' && mode !== 'game') || !roomId) return
 
     async function fetchPlayers() {
       const { data } = await supabase
@@ -272,7 +293,7 @@ export default function Home() {
         { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
         async (payload) => {
           const updatedRoom = payload.new
-          if (updatedRoom.status === 'playing' && updatedRoom.question_ids) {
+          if (updatedRoom.status === 'playing' && updatedRoom.question_ids && mode === 'lobby') {
             const { data: qData } = await supabase
               .from('questions')
               .select('*')
@@ -296,6 +317,37 @@ export default function Home() {
     }
   }, [mode, roomId])
 
+  // --- Cik spēlētāju jau atbildējuši šajā raundā (reāllaikā) ---
+  useEffect(() => {
+    if (mode !== 'game' || !roomId) return
+
+    async function fetchAnsweredCount() {
+      const { count } = await supabase
+        .from('answers')
+        .select('id', { count: 'exact', head: true })
+        .eq('room_id', roomId)
+        .eq('round_index', currentIndex)
+      setAnsweredCount(count || 0)
+    }
+
+    fetchAnsweredCount()
+
+    const channel = supabase
+      .channel(`answers-${roomId}-${currentIndex}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'answers', filter: `room_id=eq.${roomId}` },
+        () => {
+          fetchAnsweredCount()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [mode, roomId, currentIndex])
+
   async function handleStartGame() {
     setStartingGame(true)
 
@@ -312,7 +364,7 @@ export default function Home() {
     }
 
     const shuffled = [...data].sort(() => Math.random() - 0.5)
-    const ids = shuffled.slice(0, ROUNDS_COUNT).map((q) => q.id)
+    const ids = shuffled.slice(0, selectedRounds).map((q) => q.id)
 
     await supabase
       .from('rooms')
@@ -330,6 +382,22 @@ export default function Home() {
     return () => clearTimeout(t)
   }, [currentIndex, selectedTimer])
 
+  // Ieraksta atbildi datubāzē un atjaunina spēlētāja punktus (tikai multiplayer)
+  async function recordMultiplayerAnswer(question, guessValue, score) {
+    if (!roomId || !playerId) return
+
+    await supabase.from('answers').insert({
+      room_id: roomId,
+      player_id: playerId,
+      question_id: question.id,
+      round_index: currentIndex,
+      guess: guessValue,
+    })
+
+    const newTotal = totalScoreRef.current + score
+    await supabase.from('players').update({ score: newTotal }).eq('id', playerId)
+  }
+
   useEffect(() => {
     if (mode !== 'game' || questions.length === 0 || gameFinished) return
     if (selectedTimer === 0) return
@@ -346,6 +414,9 @@ export default function Home() {
           setLastRoundScore(score)
           setTotalScore((s) => s + score)
           setRevealed(true)
+          if (roomId) {
+            recordMultiplayerAnswer(question, Number(finalGuess), score)
+          }
           return 0
         }
         return prev - 1
@@ -353,7 +424,7 @@ export default function Home() {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [currentIndex, questions, gameFinished, mode, selectedTimer])
+  }, [currentIndex, questions, gameFinished, mode, selectedTimer, roomId])
 
   // --- GALVENĀ IZVĒLNE ---
   if (mode === 'menu') {
@@ -410,7 +481,7 @@ export default function Home() {
     )
   }
 
-  // --- SOLO: kategorijas un laika izvēle ---
+  // --- SOLO: kategorijas, laika un raundu izvēle ---
   if (mode === 'solo-setup') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -438,6 +509,26 @@ export default function Home() {
                   >
                     <CatIcon className="w-6 h-6" strokeWidth={2.2} />
                     <span className="text-sm font-semibold">{cat.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <p className="text-slate-700 text-sm font-semibold mb-3">Raundu skaits</p>
+            <div className="grid grid-cols-3 gap-2 mb-6">
+              {ROUND_OPTIONS.map((opt) => {
+                const isSelected = selectedRounds === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => setSelectedRounds(opt.key)}
+                    className={`rounded-xl py-3 border-2 transition-all text-sm font-bold ${
+                      isSelected
+                        ? 'bg-orange-50 border-orange-500 text-orange-600'
+                        : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'
+                    }`}
+                  >
+                    {opt.label}
                   </button>
                 )
               })}
@@ -483,7 +574,7 @@ export default function Home() {
     )
   }
 
-  // --- ISTABAS IZVEIDE: vārds + kategorija + laiks ---
+  // --- ISTABAS IZVEIDE: vārds + kategorija + laiks + raundi ---
   if (mode === 'create-room') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -522,6 +613,26 @@ export default function Home() {
                   >
                     <CatIcon className="w-5 h-5" strokeWidth={2.2} />
                     <span className="text-sm font-semibold">{cat.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <p className="text-slate-700 text-sm font-semibold mb-3">Raundu skaits</p>
+            <div className="grid grid-cols-3 gap-2 mb-5">
+              {ROUND_OPTIONS.map((opt) => {
+                const isSelected = selectedRounds === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => setSelectedRounds(opt.key)}
+                    className={`rounded-xl py-3 border-2 transition-all text-sm font-bold ${
+                      isSelected
+                        ? 'bg-orange-50 border-orange-500 text-orange-600'
+                        : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'
+                    }`}
+                  >
+                    {opt.label}
                   </button>
                 )
               })}
@@ -707,6 +818,7 @@ export default function Home() {
                 setPlayerName('')
                 setRoomCode('')
                 setRoomId(null)
+                setPlayerId(null)
                 setIsHost(false)
                 setLobbyPlayers([])
               }}
@@ -731,7 +843,12 @@ export default function Home() {
     )
   }
 
+  // --- SPĒLES BEIGAS: solo rezultāts vai multiplayer tabula ---
   if (gameFinished) {
+    const rankedPlayers = finalLeaderboard
+      ? [...finalLeaderboard].sort((a, b) => b.score - a.score)
+      : []
+
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
         <div className="w-full max-w-sm animate-[fadeIn_0.4s_ease-out]">
@@ -739,10 +856,37 @@ export default function Home() {
             <p className="text-5xl mb-3">🏁</p>
             <h1 className="text-2xl font-bold text-slate-900 mb-1">Spēle beigusies!</h1>
             <p className="text-slate-500 text-sm mb-6">Paldies, ka spēlēji Cikmaksā.lv</p>
-            <div className="bg-gradient-to-br from-orange-500 to-pink-500 rounded-2xl p-6">
-              <p className="text-5xl font-black text-white">{totalScore}</p>
-              <p className="text-white/90 text-sm mt-1">no {ROUNDS_COUNT * 100} punktiem</p>
-            </div>
+
+            {!roomId && (
+              <div className="bg-gradient-to-br from-orange-500 to-pink-500 rounded-2xl p-6">
+                <p className="text-5xl font-black text-white">{totalScore}</p>
+                <p className="text-white/90 text-sm mt-1">no {questions.length * 100} punktiem</p>
+              </div>
+            )}
+
+            {roomId && rankedPlayers.length > 0 && (
+              <div className="flex flex-col gap-2 text-left">
+                {rankedPlayers.map((p, i) => (
+                  <div
+                    key={p.id}
+                    className={`flex items-center gap-3 rounded-2xl px-4 py-3 border-2 ${
+                      i === 0
+                        ? 'bg-amber-50 border-amber-300'
+                        : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0 font-bold text-sm text-slate-600">
+                      {i === 0 ? <Trophy className="w-4 h-4 text-amber-500" /> : i + 1}
+                    </div>
+                    <span className="text-slate-900 font-bold text-sm flex-1 truncate">
+                      {p.name}{p.id === playerId ? ' (tu)' : ''}
+                    </span>
+                    <span className="text-slate-900 font-black text-sm">{p.score} pts</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <button
               onClick={() => {
                 setMode('menu')
@@ -752,8 +896,10 @@ export default function Home() {
                 setGuess('')
                 setRevealed(false)
                 setRoomId(null)
+                setPlayerId(null)
                 setIsHost(false)
                 setLobbyPlayers([])
+                setFinalLeaderboard(null)
               }}
               className="w-full mt-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-2xl py-3 transition-all"
             >
@@ -787,15 +933,26 @@ export default function Home() {
   const timerColor = timeLeft <= 5 ? 'text-rose-500' : timeLeft <= 10 ? 'text-amber-500' : 'text-orange-500'
   const timerBarColor = timeLeft <= 5 ? 'bg-rose-500' : timeLeft <= 10 ? 'bg-amber-500' : 'bg-orange-500'
 
-  function handleGuess() {
+  async function handleGuess() {
     const score = calculateScore(Number(guess), question.correct_price)
     setLastRoundScore(score)
     setTotalScore((prev) => prev + score)
     setRevealed(true)
+    if (roomId) {
+      await recordMultiplayerAnswer(question, Number(guess), score)
+    }
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (currentIndex + 1 >= questions.length) {
+      if (roomId) {
+        const { data } = await supabase
+          .from('players')
+          .select('*')
+          .eq('room_id', roomId)
+          .order('score', { ascending: false })
+        setFinalLeaderboard(data || [])
+      }
       setGameFinished(true)
     } else {
       setCurrentIndex((prev) => prev + 1)
@@ -820,6 +977,12 @@ export default function Home() {
             RAUNDS {currentIndex + 1}/{questions.length}
           </span>
           <div className="flex items-center gap-2">
+            {roomId && (
+              <span className="flex items-center gap-1 bg-slate-200 text-slate-600 text-xs font-bold px-3 py-1 rounded-full">
+                <Users className="w-3.5 h-3.5" />
+                {answeredCount}/{lobbyPlayers.length} atbildējuši
+              </span>
+            )}
             {!revealed && selectedTimer > 0 && (
               <span className={`flex items-center gap-1 text-xs font-bold ${timerColor}`}>
                 <Clock className="w-3.5 h-3.5" />
