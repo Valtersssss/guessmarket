@@ -123,6 +123,7 @@ export default function Home() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [guess, setGuess] = useState('')
   const [revealed, setRevealed] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
   const [totalScore, setTotalScore] = useState(0)
   const [lastRoundScore, setLastRoundScore] = useState(0)
   const [gameFinished, setGameFinished] = useState(false)
@@ -131,7 +132,10 @@ export default function Home() {
   const [timeLeft, setTimeLeft] = useState(selectedTimer)
   const guessRef = useRef(guess)
   const revealedRef = useRef(revealed)
+  const submittedRef = useRef(submitted)
   const totalScoreRef = useRef(totalScore)
+  const currentIndexRef = useRef(currentIndex)
+  const questionsLengthRef = useRef(0)
 
   useEffect(() => {
     guessRef.current = guess
@@ -142,8 +146,20 @@ export default function Home() {
   }, [revealed])
 
   useEffect(() => {
+    submittedRef.current = submitted
+  }, [submitted])
+
+  useEffect(() => {
     totalScoreRef.current = totalScore
   }, [totalScore])
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex
+  }, [currentIndex])
+
+  useEffect(() => {
+    questionsLengthRef.current = questions.length
+  }, [questions])
 
   async function startSoloGame() {
     setLoadingQuestions(true)
@@ -293,6 +309,7 @@ export default function Home() {
         { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
         async (payload) => {
           const updatedRoom = payload.new
+
           if (updatedRoom.status === 'playing' && updatedRoom.question_ids && mode === 'lobby') {
             const { data: qData } = await supabase
               .from('questions')
@@ -306,6 +323,24 @@ export default function Home() {
               setQuestions(ordered)
               setSelectedTimer(updatedRoom.timer_seconds ?? 30)
               setMode('game')
+            }
+            return
+          }
+
+          if (mode === 'game' && typeof updatedRoom.current_question_index === 'number') {
+            const newIndex = updatedRoom.current_question_index
+            if (newIndex !== currentIndexRef.current) {
+              if (newIndex >= questionsLengthRef.current) {
+                const { data } = await supabase
+                  .from('players')
+                  .select('*')
+                  .eq('room_id', roomId)
+                  .order('score', { ascending: false })
+                setFinalLeaderboard(data || [])
+                setGameFinished(true)
+              } else {
+                setCurrentIndex(newIndex)
+              }
             }
           }
         }
@@ -378,9 +413,20 @@ export default function Home() {
     setAnimateIn(false)
     setPhotoIndex(0)
     setTimeLeft(selectedTimer)
+    setGuess('')
+    setRevealed(false)
+    setSubmitted(false)
     const t = setTimeout(() => setAnimateIn(true), 20)
     return () => clearTimeout(t)
   }, [currentIndex, selectedTimer])
+
+  // --- Kad visi spēlētāji atbildējuši, atklāj rezultātu visiem vienlaicīgi (multiplayer) ---
+  useEffect(() => {
+    if (!roomId || mode !== 'game') return
+    if (submitted && !revealed && lobbyPlayers.length > 0 && answeredCount >= lobbyPlayers.length) {
+      setRevealed(true)
+    }
+  }, [submitted, answeredCount, lobbyPlayers, roomId, mode, revealed])
 
   // Ieraksta atbildi datubāzē un atjaunina spēlētāja punktus (tikai multiplayer)
   async function recordMultiplayerAnswer(question, guessValue, score) {
@@ -403,7 +449,7 @@ export default function Home() {
     if (selectedTimer === 0) return
 
     const interval = setInterval(() => {
-      if (revealedRef.current) return
+      if (revealedRef.current || submittedRef.current) return
 
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -413,9 +459,11 @@ export default function Home() {
           setGuess(finalGuess)
           setLastRoundScore(score)
           setTotalScore((s) => s + score)
-          setRevealed(true)
           if (roomId) {
+            setSubmitted(true)
             recordMultiplayerAnswer(question, Number(finalGuess), score)
+          } else {
+            setRevealed(true)
           }
           return 0
         }
@@ -937,27 +985,29 @@ export default function Home() {
     const score = calculateScore(Number(guess), question.correct_price)
     setLastRoundScore(score)
     setTotalScore((prev) => prev + score)
-    setRevealed(true)
     if (roomId) {
+      setSubmitted(true)
       await recordMultiplayerAnswer(question, Number(guess), score)
+    } else {
+      setRevealed(true)
     }
   }
 
   async function handleNext() {
+    if (roomId) {
+      if (!isHost) return
+      const nextIndex = currentIndex + 1
+      await supabase
+        .from('rooms')
+        .update({ current_question_index: nextIndex })
+        .eq('id', roomId)
+      return
+    }
+
     if (currentIndex + 1 >= questions.length) {
-      if (roomId) {
-        const { data } = await supabase
-          .from('players')
-          .select('*')
-          .eq('room_id', roomId)
-          .order('score', { ascending: false })
-        setFinalLeaderboard(data || [])
-      }
       setGameFinished(true)
     } else {
       setCurrentIndex((prev) => prev + 1)
-      setGuess('')
-      setRevealed(false)
     }
   }
 
@@ -1091,7 +1141,7 @@ export default function Home() {
             </div>
 
             <div className="p-6 pt-4 border-t border-slate-200 bg-white shrink-0">
-              {!revealed && (
+              {!submitted && !revealed && (
                 <div className="flex flex-col gap-3">
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-lg">
@@ -1114,6 +1164,14 @@ export default function Home() {
                   >
                     Minēt cenu
                   </button>
+                </div>
+              )}
+
+              {submitted && !revealed && (
+                <div className="flex flex-col items-center justify-center gap-2 py-4">
+                  <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
+                  <p className="text-slate-600 text-sm font-semibold">Gaidi pārējos spēlētājus...</p>
+                  <p className="text-slate-400 text-xs">{answeredCount}/{lobbyPlayers.length} atbildējuši</p>
                 </div>
               )}
 
@@ -1153,12 +1211,30 @@ export default function Home() {
                     <p className="text-slate-500 text-xs font-semibold">punkti šajā raundā</p>
                   </div>
 
-                  <button
-                    onClick={handleNext}
-                    className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-2xl py-4 transition-all active:scale-[0.98]"
-                  >
-                    Nākamais →
-                  </button>
+                  {!roomId && (
+                    <button
+                      onClick={handleNext}
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-2xl py-4 transition-all active:scale-[0.98]"
+                    >
+                      Nākamais →
+                    </button>
+                  )}
+
+                  {roomId && isHost && (
+                    <button
+                      onClick={handleNext}
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-2xl py-4 transition-all active:scale-[0.98]"
+                    >
+                      {currentIndex + 1 >= questions.length ? 'Parādīt rezultātus →' : 'Nākamais raundam →'}
+                    </button>
+                  )}
+
+                  {roomId && !isHost && (
+                    <div className="flex items-center justify-center gap-2 text-slate-400 text-sm py-3">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Gaida saimnieku...
+                    </div>
+                  )}
                 </div>
               )}
             </div>
