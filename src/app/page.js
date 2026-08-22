@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from './lib/supabase'
-import { Car, Building2, Key, Briefcase, Smartphone, MapPin, Dice5, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Clock, LayoutGrid, Users, User, Copy, Check, Calendar, Gauge, Fuel, Settings2, Ruler, Layers, Palette, ShieldCheck, DoorOpen } from 'lucide-react'
+import { Car, Building2, Key, Briefcase, Smartphone, MapPin, Dice5, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Clock, LayoutGrid, Users, User, Copy, Check, Calendar, Gauge, Fuel, Settings2, Ruler, Layers, Palette, ShieldCheck, DoorOpen, Crown, Loader2 } from 'lucide-react'
 
 const ROUNDS_COUNT = 5
 const TIMER_OPTIONS = [
@@ -91,18 +91,22 @@ function generateRoomCode() {
 }
 
 export default function Home() {
-  // 'menu' | 'solo-setup' | 'create-room' | 'room-created' | 'join-room' | 'joined-room' | 'game'
+  // 'menu' | 'solo-setup' | 'create-room' | 'join-room' | 'lobby' | 'game'
   const [mode, setMode] = useState('menu')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [selectedTimer, setSelectedTimer] = useState(30)
   const [playerName, setPlayerName] = useState('')
   const [roomCode, setRoomCode] = useState('')
+  const [roomId, setRoomId] = useState(null)
+  const [isHost, setIsHost] = useState(false)
   const [joinCodeInput, setJoinCodeInput] = useState('')
   const [creatingRoom, setCreatingRoom] = useState(false)
   const [joiningRoom, setJoiningRoom] = useState(false)
   const [roomError, setRoomError] = useState('')
   const [joinError, setJoinError] = useState('')
   const [codeCopied, setCodeCopied] = useState(false)
+  const [lobbyPlayers, setLobbyPlayers] = useState([])
+  const [startingGame, setStartingGame] = useState(false)
 
   const [questions, setQuestions] = useState([])
   const [loadingQuestions, setLoadingQuestions] = useState(false)
@@ -155,7 +159,13 @@ export default function Home() {
 
     const { data: room, error: roomErr } = await supabase
       .from('rooms')
-      .insert({ code, status: 'lobby', max_rounds: ROUNDS_COUNT })
+      .insert({
+        code,
+        status: 'lobby',
+        max_rounds: ROUNDS_COUNT,
+        category: selectedCategory,
+        timer_seconds: selectedTimer,
+      })
       .select()
       .single()
 
@@ -178,7 +188,9 @@ export default function Home() {
     }
 
     setRoomCode(code)
-    setMode('room-created')
+    setRoomId(room.id)
+    setIsHost(true)
+    setMode('lobby')
     setCreatingRoom(false)
   }
 
@@ -219,7 +231,9 @@ export default function Home() {
     }
 
     setRoomCode(normalizedCode)
-    setMode('joined-room')
+    setRoomId(room.id)
+    setIsHost(false)
+    setMode('lobby')
     setJoiningRoom(false)
   }
 
@@ -227,6 +241,85 @@ export default function Home() {
     navigator.clipboard.writeText(roomCode)
     setCodeCopied(true)
     setTimeout(() => setCodeCopied(false), 2000)
+  }
+
+  // --- LOBBY: spēlētāju saraksts + gaidīšana uz spēles sākumu (reāllaikā) ---
+  useEffect(() => {
+    if (mode !== 'lobby' || !roomId) return
+
+    async function fetchPlayers() {
+      const { data } = await supabase
+        .from('players')
+        .select('*')
+        .eq('room_id', roomId)
+        .order('created_at', { ascending: true })
+      if (data) setLobbyPlayers(data)
+    }
+
+    fetchPlayers()
+
+    const channel = supabase
+      .channel(`room-${roomId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` },
+        () => {
+          fetchPlayers()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
+        async (payload) => {
+          const updatedRoom = payload.new
+          if (updatedRoom.status === 'playing' && updatedRoom.question_ids) {
+            const { data: qData } = await supabase
+              .from('questions')
+              .select('*')
+              .in('id', updatedRoom.question_ids)
+
+            if (qData) {
+              const ordered = updatedRoom.question_ids
+                .map((id) => qData.find((q) => q.id === id))
+                .filter(Boolean)
+              setQuestions(ordered)
+              setSelectedTimer(updatedRoom.timer_seconds ?? 30)
+              setMode('game')
+            }
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [mode, roomId])
+
+  async function handleStartGame() {
+    setStartingGame(true)
+
+    let query = supabase.from('questions').select('id')
+    if (selectedCategory !== 'all') {
+      query = query.eq('category', selectedCategory)
+    }
+    const { data, error } = await query
+
+    if (error || !data || data.length === 0) {
+      console.error(error)
+      setStartingGame(false)
+      return
+    }
+
+    const shuffled = [...data].sort(() => Math.random() - 0.5)
+    const ids = shuffled.slice(0, ROUNDS_COUNT).map((q) => q.id)
+
+    await supabase
+      .from('rooms')
+      .update({ status: 'playing', question_ids: ids })
+      .eq('id', roomId)
+
+    // Pārējais notiek automātiski caur realtime abonementu augšā
   }
 
   useEffect(() => {
@@ -390,7 +483,7 @@ export default function Home() {
     )
   }
 
-  // --- ISTABAS IZVEIDE: vārda ievade ---
+  // --- ISTABAS IZVEIDE: vārds + kategorija + laiks ---
   if (mode === 'create-room') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -407,11 +500,52 @@ export default function Home() {
               placeholder="Ievadi savu vārdu"
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && playerName.trim() && handleCreateRoom()}
               maxLength={20}
               autoFocus
-              className="w-full bg-slate-50 text-slate-900 text-lg font-semibold rounded-2xl px-4 py-4 outline-none border-2 border-slate-200 focus:border-orange-500 transition-colors mb-4"
+              className="w-full bg-slate-50 text-slate-900 text-lg font-semibold rounded-2xl px-4 py-4 outline-none border-2 border-slate-200 focus:border-orange-500 transition-colors mb-5"
             />
+
+            <p className="text-slate-700 text-sm font-semibold mb-3">Kategorija</p>
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              {CATEGORY_FILTERS.map((cat) => {
+                const CatIcon = cat.icon
+                const isSelected = selectedCategory === cat.key
+                return (
+                  <button
+                    key={cat.key}
+                    onClick={() => setSelectedCategory(cat.key)}
+                    className={`flex flex-col items-center gap-2 rounded-2xl py-4 border-2 transition-all ${
+                      isSelected
+                        ? 'bg-orange-50 border-orange-500 text-orange-600'
+                        : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'
+                    }`}
+                  >
+                    <CatIcon className="w-5 h-5" strokeWidth={2.2} />
+                    <span className="text-sm font-semibold">{cat.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <p className="text-slate-700 text-sm font-semibold mb-3">Laiks vienam raundam</p>
+            <div className="grid grid-cols-5 gap-2 mb-5">
+              {TIMER_OPTIONS.map((opt) => {
+                const isSelected = selectedTimer === opt.key
+                return (
+                  <button
+                    key={opt.key}
+                    onClick={() => setSelectedTimer(opt.key)}
+                    className={`rounded-xl py-3 border-2 transition-all text-xs font-bold ${
+                      isSelected
+                        ? 'bg-orange-50 border-orange-500 text-orange-600'
+                        : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                )
+              })}
+            </div>
 
             {roomError && (
               <p className="text-rose-500 text-sm font-medium mb-4">{roomError}</p>
@@ -430,55 +564,6 @@ export default function Home() {
               className="w-full mt-2 text-slate-400 hover:text-slate-600 font-semibold text-xs py-2 transition-colors"
             >
               ← Atpakaļ
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // --- ISTABA IZVEIDOTA: rāda kodu ---
-  if (mode === 'room-created') {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-black text-slate-900 mb-2">Istaba izveidota!</h1>
-            <p className="text-slate-500 text-sm">Iedod šo kodu draugiem, lai viņi pievienotos</p>
-          </div>
-
-          <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 text-center">
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-wide mb-3">Istabas kods</p>
-            <p className="text-5xl font-black text-slate-900 tracking-[0.2em] mb-6">{roomCode}</p>
-
-            <button
-              onClick={copyRoomCode}
-              className="w-full flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-2xl py-3.5 transition-all mb-3"
-            >
-              {codeCopied ? (
-                <>
-                  <Check className="w-4 h-4" /> Nokopēts!
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" /> Kopēt kodu
-                </>
-              )}
-            </button>
-
-            <p className="text-slate-400 text-xs">
-              Nākamais solis: lobby ar spēlētāju sarakstu un "Sākt spēli" pogu vēl tiks pievienots
-            </p>
-
-            <button
-              onClick={() => {
-                setMode('menu')
-                setPlayerName('')
-                setRoomCode('')
-              }}
-              className="w-full mt-4 text-slate-400 hover:text-slate-600 font-semibold text-xs py-2 transition-colors"
-            >
-              ← Atpakaļ uz izvēlni
             </button>
           </div>
         </div>
@@ -543,35 +628,91 @@ export default function Home() {
     )
   }
 
-  // --- PIEVIENOJIES ISTABAI: apstiprinājums ---
-  if (mode === 'joined-room') {
+  // --- LOBBY: kods + reāllaika spēlētāju saraksts ---
+  if (mode === 'lobby') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-black text-slate-900 mb-2">Pievienojies!</h1>
-            <p className="text-slate-500 text-sm">Gaidi, kamēr saimnieks sāks spēli</p>
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-black text-slate-900 mb-1">Istaba</h1>
+            <p className="text-slate-500 text-sm">
+              {isHost ? 'Iedod kodu draugiem un sāc, kad visi gatavi' : 'Gaidi, kamēr saimnieks sāks spēli'}
+            </p>
           </div>
 
-          <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 text-center">
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-wide mb-3">Istaba</p>
-            <p className="text-5xl font-black text-slate-900 tracking-[0.2em] mb-6">{roomCode}</p>
+          <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
+            <div className="text-center mb-6">
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wide mb-2">Istabas kods</p>
+              <p className="text-4xl font-black text-slate-900 tracking-[0.2em] mb-3">{roomCode}</p>
+              <button
+                onClick={copyRoomCode}
+                className="inline-flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-full px-4 py-2 transition-all"
+              >
+                {codeCopied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" /> Nokopēts!
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" /> Kopēt kodu
+                  </>
+                )}
+              </button>
+            </div>
 
-            <p className="text-slate-500 text-sm mb-2">Sveiks, <span className="font-bold text-slate-900">{playerName}</span>!</p>
-            <p className="text-slate-400 text-xs">
-              Nākamais solis: lobby ar visu spēlētāju sarakstu reāllaikā vēl tiks pievienots
+            <p className="text-slate-700 text-sm font-semibold mb-3">
+              Spēlētāji ({lobbyPlayers.length})
             </p>
+            <div className="flex flex-col gap-2 mb-6">
+              {lobbyPlayers.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3"
+                >
+                  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                    <span className="text-orange-600 font-bold text-xs">
+                      {p.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <span className="text-slate-900 font-semibold text-sm flex-1 truncate">{p.name}</span>
+                  {p.is_host && <Crown className="w-4 h-4 text-amber-500 shrink-0" />}
+                </div>
+              ))}
+              {lobbyPlayers.length === 0 && (
+                <div className="flex items-center justify-center gap-2 text-slate-400 text-sm py-4">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Ielādē spēlētājus...
+                </div>
+              )}
+            </div>
+
+            {isHost ? (
+              <button
+                onClick={handleStartGame}
+                disabled={startingGame || lobbyPlayers.length === 0}
+                className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold text-base rounded-2xl py-4 transition-all active:scale-[0.98]"
+              >
+                {startingGame ? 'Sāk...' : 'Sākt spēli'}
+              </button>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-slate-400 text-sm py-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Gaida saimnieku...
+              </div>
+            )}
 
             <button
               onClick={() => {
                 setMode('menu')
                 setPlayerName('')
                 setRoomCode('')
-                setJoinCodeInput('')
+                setRoomId(null)
+                setIsHost(false)
+                setLobbyPlayers([])
               }}
-              className="w-full mt-6 text-slate-400 hover:text-slate-600 font-semibold text-xs py-2 transition-colors"
+              className="w-full mt-3 text-slate-400 hover:text-slate-600 font-semibold text-xs py-2 transition-colors"
             >
-              ← Atpakaļ uz izvēlni
+              ← Pamest istabu
             </button>
           </div>
         </div>
@@ -610,6 +751,9 @@ export default function Home() {
                 setTotalScore(0)
                 setGuess('')
                 setRevealed(false)
+                setRoomId(null)
+                setIsHost(false)
+                setLobbyPlayers([])
               }}
               className="w-full mt-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-2xl py-3 transition-all"
             >
