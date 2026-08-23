@@ -474,23 +474,24 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [currentIndex, questions, gameFinished, mode, selectedTimer, roomId])
 
-  // --- GALVENĀ IZVĒLNE ---
+    // --- GALVENĀ IZVĒLNE ---
   if (mode === 'menu') {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
+            <div className="text-5xl mb-3">🏷️</div>
             <h1 className="text-3xl font-black text-slate-900 mb-2">Cikmaksā.lv</h1>
-            <p className="text-slate-500 text-sm">Uzmini reālu SS.LV sludinājumu cenas</p>
+            <p className="text-slate-500 text-sm">Sludinājumu minēšanas spēle ar  draugiem</p>
           </div>
 
           <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 flex flex-col gap-3">
             <button
               onClick={() => setMode('solo-setup')}
-              className="flex items-center gap-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 transition-all text-left"
+              className="group flex items-center gap-4 bg-slate-50 hover:bg-orange-50 border-2 border-slate-200 hover:border-orange-300 rounded-2xl p-4 transition-all text-left active:scale-[0.98]"
             >
-              <div className="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                <User className="w-5 h-5 text-orange-500" strokeWidth={2.2} />
+              <div className="w-12 h-12 rounded-xl bg-orange-100 group-hover:bg-orange-200 flex items-center justify-center shrink-0 transition-colors">
+                <User className="w-6 h-6 text-orange-500" strokeWidth={2.2} />
               </div>
               <div>
                 <p className="text-slate-900 font-bold text-sm">Spēlēt solo</p>
@@ -500,10 +501,10 @@ export default function Home() {
 
             <button
               onClick={() => setMode('create-room')}
-              className="flex items-center gap-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 transition-all text-left"
+              className="group flex items-center gap-4 bg-slate-50 hover:bg-violet-50 border-2 border-slate-200 hover:border-violet-300 rounded-2xl p-4 transition-all text-left active:scale-[0.98]"
             >
-              <div className="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5 text-orange-500" strokeWidth={2.2} />
+              <div className="w-12 h-12 rounded-xl bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center shrink-0 transition-colors">
+                <Users className="w-6 h-6 text-violet-500" strokeWidth={2.2} />
               </div>
               <div>
                 <p className="text-slate-900 font-bold text-sm">Izveidot istabu</p>
@@ -513,10 +514,10 @@ export default function Home() {
 
             <button
               onClick={() => setMode('join-room')}
-              className="flex items-center gap-4 bg-slate-50 hover:bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 transition-all text-left"
+              className="group flex items-center gap-4 bg-slate-50 hover:bg-sky-50 border-2 border-slate-200 hover:border-sky-300 rounded-2xl p-4 transition-all text-left active:scale-[0.98]"
             >
-              <div className="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
-                <DoorOpen className="w-5 h-5 text-orange-500" strokeWidth={2.2} />
+              <div className="w-12 h-12 rounded-xl bg-sky-100 group-hover:bg-sky-200 flex items-center justify-center shrink-0 transition-colors">
+                <DoorOpen className="w-6 h-6 text-sky-500" strokeWidth={2.2} />
               </div>
               <div>
                 <p className="text-slate-900 font-bold text-sm">Pievienoties istabai</p>
