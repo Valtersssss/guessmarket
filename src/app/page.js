@@ -474,62 +474,77 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [currentIndex, questions, gameFinished, mode, selectedTimer, roomId])
 
-    // --- GALVENĀ IZVĒLNE ---
+     // --- GALVENĀ IZVĒLNE ---
   if (mode === 'menu') {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-pink-50 flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="absolute top-10 left-6 text-6xl opacity-[0.08] rotate-12 select-none pointer-events-none">🏷️</div>
+        <div className="absolute bottom-16 right-8 text-7xl opacity-[0.08] -rotate-12 select-none pointer-events-none">💶</div>
+        <div className="absolute top-1/4 right-10 text-5xl opacity-[0.08] rotate-6 select-none pointer-events-none">🚗</div>
+        <div className="absolute bottom-1/4 left-10 text-5xl opacity-[0.08] -rotate-6 select-none pointer-events-none">🏠</div>
+
+        <div className="w-full max-w-md relative z-10">
           <div className="text-center mb-8">
-            <div className="text-5xl mb-3">🏷️</div>
-            <h1 className="text-3xl font-black text-slate-900 mb-2">Cikmaksā.lv</h1>
-            <p className="text-slate-500 text-sm">Sludinājumu minēšanas spēle ar  draugiem</p>
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-400 to-pink-500 shadow-lg shadow-orange-200 mb-4">
+              <span className="text-3xl">🏷️</span>
+            </div>
+            <h1 className="text-4xl font-black bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent mb-2">
+              Cikmaksā.lv
+            </h1>
+            <p className="text-slate-500 text-sm font-medium">Sludinājumu minēšanas spēle draugiem</p>
           </div>
 
-          <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 flex flex-col gap-3">
+          <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-white/60 flex flex-col gap-3">
             <button
               onClick={() => setMode('solo-setup')}
-              className="group flex items-center gap-4 bg-slate-50 hover:bg-orange-50 border-2 border-slate-200 hover:border-orange-300 rounded-2xl p-4 transition-all text-left active:scale-[0.98]"
+              className="group flex items-center gap-4 bg-white hover:bg-orange-50 border-2 border-slate-100 hover:border-orange-300 rounded-2xl p-4 transition-all text-left active:scale-[0.98] shadow-sm"
             >
-              <div className="w-12 h-12 rounded-xl bg-orange-100 group-hover:bg-orange-200 flex items-center justify-center shrink-0 transition-colors">
-                <User className="w-6 h-6 text-orange-500" strokeWidth={2.2} />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center shrink-0 shadow-sm shadow-orange-200">
+                <User className="w-6 h-6 text-white" strokeWidth={2.2} />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-slate-900 font-bold text-sm">Spēlēt solo</p>
                 <p className="text-slate-500 text-xs">Trenējies viens pats</p>
               </div>
+              <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-orange-400 group-hover:translate-x-0.5 transition-all" />
             </button>
 
             <button
               onClick={() => setMode('create-room')}
-              className="group flex items-center gap-4 bg-slate-50 hover:bg-violet-50 border-2 border-slate-200 hover:border-violet-300 rounded-2xl p-4 transition-all text-left active:scale-[0.98]"
+              className="group flex items-center gap-4 bg-white hover:bg-violet-50 border-2 border-slate-100 hover:border-violet-300 rounded-2xl p-4 transition-all text-left active:scale-[0.98] shadow-sm"
             >
-              <div className="w-12 h-12 rounded-xl bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center shrink-0 transition-colors">
-                <Users className="w-6 h-6 text-violet-500" strokeWidth={2.2} />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-400 to-violet-500 flex items-center justify-center shrink-0 shadow-sm shadow-violet-200">
+                <Users className="w-6 h-6 text-white" strokeWidth={2.2} />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-slate-900 font-bold text-sm">Izveidot istabu</p>
                 <p className="text-slate-500 text-xs">Spēlē ar draugiem</p>
               </div>
+              <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-violet-400 group-hover:translate-x-0.5 transition-all" />
             </button>
 
             <button
               onClick={() => setMode('join-room')}
-              className="group flex items-center gap-4 bg-slate-50 hover:bg-sky-50 border-2 border-slate-200 hover:border-sky-300 rounded-2xl p-4 transition-all text-left active:scale-[0.98]"
+              className="group flex items-center gap-4 bg-white hover:bg-sky-50 border-2 border-slate-100 hover:border-sky-300 rounded-2xl p-4 transition-all text-left active:scale-[0.98] shadow-sm"
             >
-              <div className="w-12 h-12 rounded-xl bg-sky-100 group-hover:bg-sky-200 flex items-center justify-center shrink-0 transition-colors">
-                <DoorOpen className="w-6 h-6 text-sky-500" strokeWidth={2.2} />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-400 to-sky-500 flex items-center justify-center shrink-0 shadow-sm shadow-sky-200">
+                <DoorOpen className="w-6 h-6 text-white" strokeWidth={2.2} />
               </div>
-              <div>
+              <div className="flex-1">
                 <p className="text-slate-900 font-bold text-sm">Pievienoties istabai</p>
                 <p className="text-slate-500 text-xs">Ievadi drauga istabas kodu</p>
               </div>
+              <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all" />
             </button>
           </div>
+
+          <p className="text-center text-slate-400 text-xs mt-6">
+            Balstīts uz reāliem SS.LV sludinājumiem
+          </p>
         </div>
       </div>
     )
   }
-
   // --- SOLO: kategorijas, laika un raundu izvēle ---
   if (mode === 'solo-setup') {
     return (
