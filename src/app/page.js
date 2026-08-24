@@ -491,7 +491,7 @@ export default function Home() {
             <h1 className="text-4xl font-black bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent mb-2">
               Cikmaksā.lv
             </h1>
-            <p className="text-slate-500 text-sm font-medium">Sludinājumu minēšanas spēle draugiem</p>
+            <p className="text-slate-500 text-sm font-medium">Sludinājumu minēšanas spēle ar draugiem</p>
           </div>
 
           <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-white/60 flex flex-col gap-3">
@@ -539,7 +539,7 @@ export default function Home() {
           </div>
 
           <p className="text-center text-slate-400 text-xs mt-6">
-            Balstīts uz reāliem SS.LV sludinājumiem
+            Balstīts uz reāliem sludinājumiem
           </p>
         </div>
       </div>
@@ -1083,8 +1083,8 @@ export default function Home() {
             animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
           }`}
         >
-          {photos.length > 0 && (
-            <div className="relative w-full md:w-1/2 h-64 md:h-[500px] bg-slate-100 shrink-0">
+                   {photos.length > 0 && (
+            <div className="relative w-full md:w-1/2 h-80 md:h-[500px] bg-slate-100 shrink-0">
               <img
                 src={photos[photoIndex]}
                 alt=""
@@ -1134,20 +1134,20 @@ export default function Home() {
               </div>
 
               <h1 className="text-xl font-bold text-slate-900 mb-1 leading-snug">{question.title}</h1>
-              <p className="text-slate-500 text-sm mb-5">{question.details}</p>
+              <p className="text-slate-500 text-sm mb-4">{question.details}</p>
 
               {specEntries.length > 0 && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2">
                   {specEntries.map(([label, value]) => {
                     const SpecIcon = getSpecIcon(label)
                     return (
-                      <div key={label} className="flex items-center gap-3 bg-white border-2 border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
-                        <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
-                          <SpecIcon className="w-4 h-4 text-orange-500" strokeWidth={2.3} />
+                      <div key={label} className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-sm">
+                        <div className="w-7 h-7 rounded-lg bg-orange-50 flex items-center justify-center shrink-0">
+                          <SpecIcon className="w-3.5 h-3.5 text-orange-500" strokeWidth={2.3} />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-slate-900 text-sm font-bold truncate">{value}</p>
-                          <p className="text-slate-400 text-[10px] font-semibold uppercase truncate">{label}</p>
+                          <p className="text-slate-900 text-xs font-bold truncate leading-tight">{value}</p>
+                          <p className="text-slate-400 text-[8px] font-semibold uppercase truncate leading-tight">{label}</p>
                         </div>
                       </div>
                     )
