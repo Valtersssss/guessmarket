@@ -161,6 +161,51 @@ export default function Home() {
     questionsLengthRef.current = questions.length
   }, [questions])
 
+  const isPopRef = useRef(false)
+
+  function resetGameState() {
+    setPlayerName('')
+    setRoomCode('')
+    setRoomId(null)
+    setPlayerId(null)
+    setIsHost(false)
+    setLobbyPlayers([])
+    setGameFinished(false)
+    setCurrentIndex(0)
+    setTotalScore(0)
+    setGuess('')
+    setRevealed(false)
+    setSubmitted(false)
+    setFinalLeaderboard(null)
+    setQuestions([])
+    setAnsweredCount(0)
+  }
+
+  useEffect(() => {
+    window.history.replaceState({ mode: 'menu' }, '')
+  }, [])
+
+  useEffect(() => {
+    if (isPopRef.current) {
+      isPopRef.current = false
+      return
+    }
+    window.history.pushState({ mode }, '')
+  }, [mode])
+
+  useEffect(() => {
+    function onPopState(event) {
+      const newMode = event.state?.mode || 'menu'
+      isPopRef.current = true
+      if (newMode === 'menu') {
+        resetGameState()
+      }
+      setMode(newMode)
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
   async function startSoloGame() {
     setLoadingQuestions(true)
     let query = supabase.from('questions').select('*')
@@ -474,7 +519,7 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [currentIndex, questions, gameFinished, mode, selectedTimer, roomId])
 
-     // --- GALVENĀ IZVĒLNE ---
+  // --- GALVENĀ IZVĒLNE ---
   if (mode === 'menu') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-pink-50 flex items-center justify-center p-4 relative overflow-hidden">
@@ -491,7 +536,7 @@ export default function Home() {
             <h1 className="text-4xl font-black bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent mb-2">
               Cikmaksā.lv
             </h1>
-            <p className="text-slate-500 text-sm font-medium">Sludinājumu minēšanas spēle ar draugiem</p>
+            <p className="text-slate-500 text-sm font-medium">Sludinājumu minēšanas spēle draugiem</p>
           </div>
 
           <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-white/60 flex flex-col gap-3">
@@ -539,12 +584,13 @@ export default function Home() {
           </div>
 
           <p className="text-center text-slate-400 text-xs mt-6">
-            Balstīts uz reāliem sludinājumiem
+            Balstīts uz reāliem SS.LV sludinājumiem
           </p>
         </div>
       </div>
     )
   }
+
   // --- SOLO: kategorijas, laika un raundu izvēle ---
   if (mode === 'solo-setup') {
     return (
@@ -552,7 +598,7 @@ export default function Home() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-black text-slate-900 mb-2">Cikmaksā.lv</h1>
-            <p className="text-slate-500 text-sm">Uzmini reālu SS.LV sludinājumu cenas</p>
+            <p className="text-slate-500 text-sm">Sludinājumu minēšanas spēle draugiem</p>
           </div>
 
           <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
@@ -878,13 +924,8 @@ export default function Home() {
 
             <button
               onClick={() => {
+                resetGameState()
                 setMode('menu')
-                setPlayerName('')
-                setRoomCode('')
-                setRoomId(null)
-                setPlayerId(null)
-                setIsHost(false)
-                setLobbyPlayers([])
               }}
               className="w-full mt-3 text-slate-400 hover:text-slate-600 font-semibold text-xs py-2 transition-colors"
             >
@@ -953,17 +994,8 @@ export default function Home() {
 
             <button
               onClick={() => {
+                resetGameState()
                 setMode('menu')
-                setGameFinished(false)
-                setCurrentIndex(0)
-                setTotalScore(0)
-                setGuess('')
-                setRevealed(false)
-                setRoomId(null)
-                setPlayerId(null)
-                setIsHost(false)
-                setLobbyPlayers([])
-                setFinalLeaderboard(null)
               }}
               className="w-full mt-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-2xl py-3 transition-all"
             >
@@ -1083,7 +1115,7 @@ export default function Home() {
             animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
           }`}
         >
-                   {photos.length > 0 && (
+          {photos.length > 0 && (
             <div className="relative w-full md:w-1/2 h-80 md:h-[500px] bg-slate-100 shrink-0">
               <img
                 src={photos[photoIndex]}
