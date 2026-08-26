@@ -515,6 +515,36 @@ export default function Home() {
 
     const newTotal = totalScoreRef.current + score
     await supabase.from('players').update({ score: newTotal }).eq('id', playerId)
+  }  // Ieraksta atbildi datubāzē un atjaunina spēlētāja punktus (tikai multiplayer)
+  async function recordMultiplayerAnswer(question, guessValue, score) {
+    if (!roomId || !playerId) {
+      console.warn('recordMultiplayerAnswer: trūkst roomId vai playerId', { roomId, playerId })
+      return
+    }
+
+    const { error: answerErr } = await supabase.from('answers').insert({
+      room_id: roomId,
+      player_id: playerId,
+      question_id: question.id,
+      round_index: currentIndex,
+      guess: guessValue,
+    })
+
+    if (answerErr) {
+      console.error('Kļūda ierakstot atbildi:', answerErr)
+    } else {
+      console.log('Atbilde veiksmīgi ierakstīta', { roomId, playerId, round: currentIndex })
+    }
+
+    const newTotal = totalScoreRef.current + score
+    const { error: scoreErr } = await supabase
+      .from('players')
+      .update({ score: newTotal })
+      .eq('id', playerId)
+
+    if (scoreErr) {
+      console.error('Kļūda atjauninot punktus:', scoreErr)
+    }
   }
 
   useEffect(() => {
