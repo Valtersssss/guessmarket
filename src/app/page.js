@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from './lib/supabase'
-import { Car, Building2, Key, Briefcase, Smartphone, MapPin, Dice5, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Clock, LayoutGrid, Users, User, Copy, Check, Calendar, Gauge, Fuel, Settings2, Ruler, Layers, Palette, ShieldCheck, DoorOpen, Crown, Loader2, Trophy, Medal } from 'lucide-react'
+import { Car, Building2, Key, Briefcase, Smartphone, MapPin, Dice5, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Clock, LayoutGrid, Users, User, Copy, Check, Calendar, Gauge, Fuel, Settings2, Ruler, Layers, Palette, ShieldCheck, DoorOpen, Crown, Loader2, Trophy, Medal, X } from 'lucide-react'
 
 const DEFAULT_ROUNDS = 5
 const ROUND_OPTIONS = [
@@ -136,6 +136,8 @@ export default function Home() {
   const totalScoreRef = useRef(totalScore)
   const currentIndexRef = useRef(currentIndex)
   const questionsLengthRef = useRef(0)
+  const roomIdRef = useRef(null)
+  const playerIdRef = useRef(null)
 
   useEffect(() => {
     guessRef.current = guess
@@ -160,6 +162,14 @@ export default function Home() {
   useEffect(() => {
     questionsLengthRef.current = questions.length
   }, [questions])
+
+  useEffect(() => {
+    roomIdRef.current = roomId
+  }, [roomId])
+
+  useEffect(() => {
+    playerIdRef.current = playerId
+  }, [playerId])
 
   const isPopRef = useRef(false)
 
@@ -193,12 +203,25 @@ export default function Home() {
     window.history.pushState({ mode }, '')
   }, [mode])
 
+  async function leaveRoom() {
+    const rId = roomIdRef.current
+    const pId = playerIdRef.current
+    if (rId && pId) {
+      try {
+        await supabase.from('players').delete().eq('id', pId)
+      } catch (e) {
+        console.error('Kļūda dzēšot spēlētāju:', e)
+      }
+    }
+    resetGameState()
+  }
+
   useEffect(() => {
     function onPopState(event) {
       const newMode = event.state?.mode || 'menu'
       isPopRef.current = true
       if (newMode === 'menu') {
-        resetGameState()
+        leaveRoom()
       }
       setMode(newMode)
     }
@@ -323,6 +346,11 @@ export default function Home() {
     navigator.clipboard.writeText(roomCode)
     setCodeCopied(true)
     setTimeout(() => setCodeCopied(false), 2000)
+  }
+
+  async function handleKickPlayer(id) {
+    if (!isHost) return
+    await supabase.from('players').delete().eq('id', id)
   }
 
   // --- LOBBY + SPĒLES LAIKĀ: spēlētāju saraksts reāllaikā, spēles sākuma sinhronizācija ---
@@ -897,6 +925,15 @@ export default function Home() {
                   </div>
                   <span className="text-slate-900 font-semibold text-sm flex-1 truncate">{p.name}</span>
                   {p.is_host && <Crown className="w-4 h-4 text-amber-500 shrink-0" />}
+                  {isHost && !p.is_host && (
+                    <button
+                      onClick={() => handleKickPlayer(p.id)}
+                      className="text-slate-300 hover:text-rose-500 transition-colors shrink-0"
+                      title="Izņemt spēlētāju"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               ))}
               {lobbyPlayers.length === 0 && (
@@ -924,7 +961,7 @@ export default function Home() {
 
             <button
               onClick={() => {
-                resetGameState()
+                leaveRoom()
                 setMode('menu')
               }}
               className="w-full mt-3 text-slate-400 hover:text-slate-600 font-semibold text-xs py-2 transition-colors"
@@ -994,7 +1031,7 @@ export default function Home() {
 
             <button
               onClick={() => {
-                resetGameState()
+                leaveRoom()
                 setMode('menu')
               }}
               className="w-full mt-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-2xl py-3 transition-all"
