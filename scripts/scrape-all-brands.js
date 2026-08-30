@@ -9,100 +9,63 @@ const supabase = createClient(
 
 // ---- KONFIGURĀCIJA ----
 const DELAY_MS = 3000
+const PAGES_PER_BRAND = 2
 
-const CATEGORIES = [
-  {
-    key: 'auto',
-    startUrl: 'https://www.ss.lv/lv/transport/cars/today-5/',
-    pagesToFetch: 15,
-    minCells: 5,
-    parseRow($, cells) {
-      const makeModelRaw = $(cells[0]).html() || ''
-      const makeModel = makeModelRaw
-        .split(/<br\s*\/?>/i)
-        .map((s) => $('<div>').html(s).text().trim())
-        .filter(Boolean)
-        .join(' ')
-
-      const year = $(cells[1]).text().trim()
-      const volume = $(cells[2]).text().trim()
-      const mileage = $(cells[3]).text().trim()
-      const priceText = $(cells[4]).text().trim()
-
-      return {
-        title: `${makeModel}, ${year}`,
-        details: `${mileage}, ${volume}`,
-        priceText,
-      }
-    },
-  },
-  {
-    key: 'dzīvoklis_pārdošana',
-    startUrl: 'https://www.ss.lv/lv/real-estate/flats/today-5/sell/',
-    pagesToFetch: 10,
-    minCells: 5,
-    parseRow($, cells) {
-      const locRaw = $(cells[0]).html() || ''
-      const locParts = locRaw
-        .split(/<br\s*\/?>/i)
-        .map((s) => $('<div>').html(s).text().trim())
-        .filter(Boolean)
-      const region = locParts[0] || ''
-      const street = locParts[1] || ''
-
-      const rooms = $(cells[1]).text().trim()
-      const area = $(cells[2]).text().trim()
-      const series = $(cells[3]).text().trim()
-      const priceText = $(cells[4]).text().trim()
-
-      return {
-        title: `${rooms}-istabu dzīvoklis, ${region}`,
-        details: `${street}, ${area} m², ${series}`,
-        priceText,
-      }
-    },
-  },
-  {
-    key: 'zeme',
-    startUrl: 'https://www.ss.lv/lv/real-estate/plots-and-lands/today-5/sell/',
-    pagesToFetch: 8,
-    minCells: 3,
-    parseRow($, cells) {
-      const locRaw = $(cells[0]).html() || ''
-      const locParts = locRaw
-        .split(/<br\s*\/?>/i)
-        .map((s) => $('<div>').html(s).text().trim())
-        .filter(Boolean)
-      const region = locParts[0] || ''
-      const street = locParts[1] || ''
-
-      const area = $(cells[1]).text().trim()
-      const priceText = $(cells[2]).text().trim()
-
-      return {
-        title: `Zemes gabals, ${region}`,
-        details: `${street}, ${area}`,
-        priceText,
-      }
-    },
-  },
-  {
-    key: 'elektronika',
-    startUrl: 'https://www.ss.lv/lv/electronics/computers/today-5/',
-    pagesToFetch: 10,
-    minCells: 1,
-    parseRow($, cells, row, title) {
-      const priceText = $(cells[cells.length - 1]).text().trim()
-      const region = row.find('.ads_region').text().trim()
-      const shortTitle = title.length > 90 ? title.slice(0, 90).trim() + '…' : title
-
-      return {
-        title: shortTitle,
-        details: region || 'Datori un orgtehnika',
-        priceText,
-      }
-    },
-  },
+const BRANDS = [
+  { slug: 'alfa-romeo', label: 'Alfa Romeo' },
+  { slug: 'audi', label: 'Audi' },
+  { slug: 'bmw', label: 'BMW' },
+  { slug: 'cadillac', label: 'Cadillac' },
+  { slug: 'chevrolet', label: 'Chevrolet' },
+  { slug: 'chrysler', label: 'Chrysler' },
+  { slug: 'citroen', label: 'Citroen' },
+  { slug: 'cupra', label: 'Cupra' },
+  { slug: 'dacia', label: 'Dacia' },
+  { slug: 'daewoo', label: 'Daewoo' },
+  { slug: 'daihatsu', label: 'Daihatsu' },
+  { slug: 'dodge', label: 'Dodge' },
+  { slug: 'fiat', label: 'Fiat' },
+  { slug: 'ford', label: 'Ford' },
+  { slug: 'honda', label: 'Honda' },
+  { slug: 'hummer', label: 'Hummer' },
+  { slug: 'hyundai', label: 'Hyundai' },
+  { slug: 'infiniti', label: 'Infiniti' },
+  { slug: 'isuzu', label: 'Isuzu' },
+  { slug: 'jaguar', label: 'Jaguar' },
+  { slug: 'jeep', label: 'Jeep' },
+  { slug: 'kia', label: 'Kia' },
+  { slug: 'lancia', label: 'Lancia' },
+  { slug: 'land-rover', label: 'Land Rover' },
+  { slug: 'lexus', label: 'Lexus' },
+  { slug: 'lincoln', label: 'Lincoln' },
+  { slug: 'mazda', label: 'Mazda' },
+  { slug: 'mercedes', label: 'Mercedes' },
+  { slug: 'mini', label: 'Mini' },
+  { slug: 'mitsubishi', label: 'Mitsubishi' },
+  { slug: 'nissan', label: 'Nissan' },
+  { slug: 'opel', label: 'Opel' },
+  { slug: 'peugeot', label: 'Peugeot' },
+  { slug: 'pontiac', label: 'Pontiac' },
+  { slug: 'porsche', label: 'Porsche' },
+  { slug: 'renault', label: 'Renault' },
+  { slug: 'rover', label: 'Rover' },
+  { slug: 'saab', label: 'Saab' },
+  { slug: 'seat', label: 'Seat' },
+  { slug: 'skoda', label: 'Skoda' },
+  { slug: 'smart', label: 'Smart' },
+  { slug: 'ssangyong', label: 'SsangYong' },
+  { slug: 'subaru', label: 'Subaru' },
+  { slug: 'suzuki', label: 'Suzuki' },
+  { slug: 'tesla', label: 'Tesla' },
+  { slug: 'toyota', label: 'Toyota' },
+  { slug: 'volkswagen', label: 'Volkswagen' },
+  { slug: 'volvo', label: 'Volvo' },
+  { slug: 'gaz', label: 'Gaz' },
+  { slug: 'iz', label: 'Iž' },
+  { slug: 'moskvich', label: 'Moskvich' },
+  { slug: 'uaz', label: 'Uaz' },
+  { slug: 'vaz', label: 'Vaz' },
+  { slug: 'zaz', label: 'Zaz' },
 ]
 // ------------------------
 
@@ -134,7 +97,7 @@ async function fetchPage(url) {
   return await response.text()
 }
 
-function parseListings(html, categoryConfig) {
+function parseListings(html, brandLabel) {
   const $ = cheerio.load(html)
   const listings = []
 
@@ -145,16 +108,21 @@ function parseListings(html, categoryConfig) {
     const detailHref = titleLink.attr('href')
     const cells = row.find('td.msga2-o, td.msga2-r')
 
-    if (!title || !detailHref || cells.length < categoryConfig.minCells) return
+    if (!title || !detailHref || cells.length < 5) return
 
-    const parsed = categoryConfig.parseRow($, cells, row, title)
-    const price = cleanPrice(parsed.priceText)
-    if (!price || price < 5) return
+    const model = $(cells[0]).text().trim()
+    const year = $(cells[1]).text().trim()
+    const volume = $(cells[2]).text().trim()
+    const mileage = $(cells[3]).text().trim()
+    const priceText = $(cells[4]).text().trim()
+    const price = cleanPrice(priceText)
+
+    if (!price || price < 50) return
 
     listings.push({
-      category: categoryConfig.key,
-      title: parsed.title,
-      details: parsed.details,
+      category: 'auto',
+      title: `${brandLabel} ${model}, ${year}`,
+      details: `${mileage}, ${volume}`,
       correct_price: price,
       detailUrl: 'https://www.ss.lv' + detailHref,
     })
@@ -230,23 +198,23 @@ async function scrapeDetail(detailUrl) {
 async function main() {
   const allListings = []
 
-  for (const categoryConfig of CATEGORIES) {
-    console.log(`\n=== POSMS 1: ${categoryConfig.key} ===`)
+  for (const brand of BRANDS) {
+    console.log(`\n=== ${brand.label} ===`)
+    const baseUrl = `https://www.ss.lv/lv/transport/cars/${brand.slug}/`
 
-    for (let page = 1; page <= categoryConfig.pagesToFetch; page++) {
-      const url = pageUrl(categoryConfig.startUrl, page)
-      console.log(`Ielādē lapu ${page}: ${url}`)
+    for (let page = 1; page <= PAGES_PER_BRAND; page++) {
+      const url = pageUrl(baseUrl, page)
 
       try {
         const html = await fetchPage(url)
-        const listings = parseListings(html, categoryConfig)
-        console.log(`  Atrasti ${listings.length} sludinājumi šajā lapā`)
+        const listings = parseListings(html, brand.label)
+        console.log(`  Lapa ${page}: atrasti ${listings.length} sludinājumi`)
         allListings.push(...listings)
       } catch (err) {
-        console.error(`  Kļūda: ${err.message}`)
+        console.error(`  Kļūda (${url}): ${err.message}`)
       }
 
-      if (page < categoryConfig.pagesToFetch) {
+      if (page < PAGES_PER_BRAND) {
         await sleep(DELAY_MS)
       }
     }
@@ -254,8 +222,8 @@ async function main() {
     await sleep(DELAY_MS)
   }
 
-  console.log(`\nKopā atrasti ${allListings.length} sludinājumi visās kategorijās.`)
-  console.log(`\n=== POSMS 2: detaļu vākšana katram sludinājumam ===`)
+  console.log(`\nKopā atrasti ${allListings.length} sludinājumi visām markām.`)
+  console.log(`\n=== Detaļu vākšana katram sludinājumam ===`)
   console.log(`(Tas prasīs apmēram ${Math.round((allListings.length * DELAY_MS) / 60000)} minūtes)`)
 
   const finalListings = []
@@ -265,7 +233,7 @@ async function main() {
 
     try {
       const detail = await scrapeDetail(listing.detailUrl)
-      console.log(`[${i + 1}/${allListings.length}] (${listing.category}) ${listing.title} — ${detail.images.length} foto`)
+      console.log(`[${i + 1}/${allListings.length}] ${listing.title} — ${detail.images.length} foto`)
 
       finalListings.push({
         category: listing.category,

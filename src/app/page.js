@@ -33,6 +33,7 @@ const CATEGORY_FILTERS = [
   { key: 'auto', label: 'Auto', icon: Car },
   { key: 'dzīvoklis_pārdošana', label: 'Dzīvokļi', icon: Building2 },
   { key: 'zeme', label: 'Zeme', icon: MapPin },
+  { key: 'elektronika', label: 'Elektronika', icon: Smartphone },
 ]
 
 const SPEC_PRIORITY = [
