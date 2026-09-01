@@ -121,6 +121,7 @@ export default function Home() {
 
   const [questions, setQuestions] = useState([])
   const [loadingQuestions, setLoadingQuestions] = useState(false)
+  const [soloError, setSoloError] = useState('')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [guess, setGuess] = useState('')
   const [revealed, setRevealed] = useState(false)
@@ -232,6 +233,7 @@ export default function Home() {
 
   async function startSoloGame() {
     setLoadingQuestions(true)
+    setSoloError('')
     let query = supabase.from('questions').select('*')
 
     if (selectedCategory !== 'all') {
@@ -242,6 +244,9 @@ export default function Home() {
 
     if (error) {
       console.error('Kļūda ielādējot jautājumus:', error)
+      setSoloError('Neizdevās ielādēt jautājumus. Mēģini vēlreiz.')
+    } else if (!data || data.length === 0) {
+      setSoloError('Šai kategorijai vēl nav sludinājumu. Izvēlies citu kategoriju.')
     } else {
       const shuffled = [...data].sort(() => Math.random() - 0.5)
       setQuestions(shuffled.slice(0, selectedRounds))
@@ -516,36 +521,6 @@ export default function Home() {
 
     const newTotal = totalScoreRef.current + score
     await supabase.from('players').update({ score: newTotal }).eq('id', playerId)
-  }  // Ieraksta atbildi datubāzē un atjaunina spēlētāja punktus (tikai multiplayer)
-  async function recordMultiplayerAnswer(question, guessValue, score) {
-    if (!roomId || !playerId) {
-      console.warn('recordMultiplayerAnswer: trūkst roomId vai playerId', { roomId, playerId })
-      return
-    }
-
-    const { error: answerErr } = await supabase.from('answers').insert({
-      room_id: roomId,
-      player_id: playerId,
-      question_id: question.id,
-      round_index: currentIndex,
-      guess: guessValue,
-    })
-
-    if (answerErr) {
-      console.error('Kļūda ierakstot atbildi:', answerErr)
-    } else {
-      console.log('Atbilde veiksmīgi ierakstīta', { roomId, playerId, round: currentIndex })
-    }
-
-    const newTotal = totalScoreRef.current + score
-    const { error: scoreErr } = await supabase
-      .from('players')
-      .update({ score: newTotal })
-      .eq('id', playerId)
-
-    if (scoreErr) {
-      console.error('Kļūda atjauninot punktus:', scoreErr)
-    }
   }
 
   useEffect(() => {
@@ -662,7 +637,7 @@ export default function Home() {
 
           <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
             <p className="text-slate-700 text-sm font-semibold mb-3">Izvēlies kategoriju</p>
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="flex flex-wrap justify-center gap-3 mb-6">
               {CATEGORY_FILTERS.map((cat) => {
                 const CatIcon = cat.icon
                 const isSelected = selectedCategory === cat.key
@@ -670,14 +645,14 @@ export default function Home() {
                   <button
                     key={cat.key}
                     onClick={() => setSelectedCategory(cat.key)}
-                    className={`flex flex-col items-center gap-2 rounded-2xl py-5 border-2 transition-all ${
+                    className={`flex flex-col items-center gap-2 rounded-2xl py-5 px-2 border-2 transition-all w-[30%] min-w-[96px] ${
                       isSelected
                         ? 'bg-orange-50 border-orange-500 text-orange-600'
                         : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'
                     }`}
                   >
                     <CatIcon className="w-6 h-6" strokeWidth={2.2} />
-                    <span className="text-sm font-semibold">{cat.label}</span>
+                    <span className="text-sm font-semibold text-center">{cat.label}</span>
                   </button>
                 )
               })}
@@ -723,6 +698,10 @@ export default function Home() {
               })}
             </div>
 
+            {soloError && (
+              <p className="text-rose-500 text-sm font-medium mb-4 text-center">{soloError}</p>
+            )}
+
             <button
               onClick={startSoloGame}
               disabled={loadingQuestions}
@@ -766,7 +745,7 @@ export default function Home() {
             />
 
             <p className="text-slate-700 text-sm font-semibold mb-3">Kategorija</p>
-            <div className="grid grid-cols-2 gap-3 mb-5">
+            <div className="flex flex-wrap justify-center gap-3 mb-5">
               {CATEGORY_FILTERS.map((cat) => {
                 const CatIcon = cat.icon
                 const isSelected = selectedCategory === cat.key
@@ -774,14 +753,14 @@ export default function Home() {
                   <button
                     key={cat.key}
                     onClick={() => setSelectedCategory(cat.key)}
-                    className={`flex flex-col items-center gap-2 rounded-2xl py-4 border-2 transition-all ${
+                    className={`flex flex-col items-center gap-2 rounded-2xl py-4 px-2 border-2 transition-all w-[30%] min-w-[90px] ${
                       isSelected
                         ? 'bg-orange-50 border-orange-500 text-orange-600'
                         : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300'
                     }`}
                   >
                     <CatIcon className="w-5 h-5" strokeWidth={2.2} />
-                    <span className="text-sm font-semibold">{cat.label}</span>
+                    <span className="text-sm font-semibold text-center">{cat.label}</span>
                   </button>
                 )
               })}
