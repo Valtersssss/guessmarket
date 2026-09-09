@@ -267,7 +267,7 @@ async function main() {
       const detail = await scrapeDetail(listing.detailUrl)
       console.log(`[${i + 1}/${allListings.length}] (${listing.category}) ${listing.title} — ${detail.images.length} foto`)
 
-      finalListings.push({
+        finalListings.push({
         category: listing.category,
         title: listing.title,
         details: listing.details,
@@ -276,10 +276,11 @@ async function main() {
         image_urls: detail.images,
         description: detail.description || null,
         specs: detail.specs,
+        source_url: listing.detailUrl,
       })
     } catch (err) {
       console.error(`[${i + 1}/${allListings.length}] Kļūda: ${err.message}`)
-      finalListings.push({
+        finalListings.push({
         category: listing.category,
         title: listing.title,
         details: listing.details,
@@ -288,6 +289,7 @@ async function main() {
         image_urls: [],
         description: null,
         specs: {},
+        source_url: listing.detailUrl,
       })
     }
 
