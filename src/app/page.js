@@ -723,10 +723,8 @@ export default function Home() {
   }
 
   useEffect(() => {
-    if (mode === 'daily') {
-      loadDailyChallenge()
-    }
-  }, [mode])
+    loadDailyChallenge()
+  }, [])
 
   async function loadLeaderboard(metric, category) {
     setLeaderboardLoading(true)
@@ -1047,6 +1045,66 @@ export default function Home() {
               </button>
             )}
           </div>
+
+          {dailyQuestion && (() => {
+            const menuDailyPhotos = dailyQuestion.image_urls && dailyQuestion.image_urls.length > 0
+              ? dailyQuestion.image_urls
+              : (dailyQuestion.image_url ? [dailyQuestion.image_url] : [])
+
+            return (
+              <div className="bg-white rounded-3xl border border-neutral-200 shadow-[0_1px_2px_rgba(0,0,0,0.04)] overflow-hidden mb-4">
+                <div className="flex items-center gap-1.5 px-5 pt-4">
+                  <Sparkles className="w-3.5 h-3.5 text-neutral-400" />
+                  <span className="text-neutral-400 text-xs font-semibold uppercase tracking-wide">Dienas izaicinājums</span>
+                </div>
+                <div className="flex gap-4 p-5">
+                  {menuDailyPhotos.length > 0 && (
+                    <div className="w-20 h-20 rounded-2xl bg-neutral-50 overflow-hidden shrink-0">
+                      <img src={menuDailyPhotos[0]} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-neutral-900 font-medium text-sm truncate mb-0.5">{dailyQuestion.title}</p>
+                    <p className="text-neutral-400 text-xs truncate mb-2">{dailyQuestion.details}</p>
+
+                    {!dailyRevealed ? (
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          placeholder="€"
+                          value={dailyGuess}
+                          onChange={(e) => setDailyGuess(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && dailyGuess && handleDailyGuess()}
+                          className="w-20 bg-neutral-50 text-neutral-900 text-sm font-semibold rounded-xl px-3 py-2 outline-none border border-neutral-200 focus:border-neutral-900 transition-colors"
+                        />
+                        <button
+                          onClick={handleDailyGuess}
+                          disabled={!dailyGuess}
+                          className="flex-1 bg-neutral-900 hover:bg-neutral-800 disabled:opacity-30 text-white font-medium text-xs rounded-xl px-3 py-2 transition-all"
+                        >
+                          Minēt cenu
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-neutral-900 font-semibold text-sm">
+                          {dailyScore}/100 · pareizā cena {dailyQuestion.correct_price} €
+                        </p>
+                        {!authUser && (
+                          <button
+                            onClick={() => setMode('login')}
+                            className="text-neutral-400 hover:text-neutral-700 text-[11px] font-medium underline mt-0.5"
+                          >
+                            Ielogojies, lai rezultāts tiktu saglabāts
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
 
           <div className="bg-white rounded-3xl border border-neutral-200 divide-y divide-neutral-100 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
             <button
