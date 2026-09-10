@@ -1167,27 +1167,6 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mb-6 flex justify-center">
-            {authUser ? (
-              <button
-                onClick={() => setMode('profile')}
-                className="flex items-center gap-2 text-[#5f5e5a] hover:text-[#171717] text-sm font-medium transition-colors"
-              >
-                <div className="w-6 h-6 rounded-full bg-[#EF9F27] flex items-center justify-center text-[#171717] text-[10px] font-semibold">
-                  {(profile?.username || authUser.email || '?').charAt(0).toUpperCase()}
-                </div>
-                {profile?.username || authUser.email}
-              </button>
-            ) : (
-              <button
-                onClick={() => setMode('login')}
-                className="text-[#5f5e5a] hover:text-[#171717] text-sm font-medium transition-colors"
-              >
-                Ielogoties / Reģistrēties
-              </button>
-            )}
-          </div>
-
           {dailyQuestion && (() => {
             const menuDailyPhotos = dailyQuestion.image_urls && dailyQuestion.image_urls.length > 0
               ? dailyQuestion.image_urls
@@ -1235,14 +1214,6 @@ export default function Home() {
                         </span>
                         <span className="text-[#5f5e5a] text-xs">pareizā cena {dailyQuestion.correct_price} €</span>
                       </div>
-                    )}
-                    {dailyRevealed && !authUser && (
-                      <button
-                        onClick={() => setMode('login')}
-                        className="text-[#888780] hover:text-[#171717] text-[11px] font-medium underline mt-2 block"
-                      >
-                        Ielogojies, lai rezultāts tiktu saglabāts
-                      </button>
                     )}
                   </div>
                 </div>
@@ -1300,20 +1271,6 @@ export default function Home() {
             </button>
 
             <button
-              onClick={() => setMode('public-rooms')}
-              className="group w-full flex items-center gap-4 px-5 py-4 hover:bg-[#F5EFE0] transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-2xl bg-[#EEEDFE] flex items-center justify-center shrink-0 group-hover:-rotate-6 transition-transform">
-                <LayoutGrid className="w-[18px] h-[18px] text-[#534AB7]" strokeWidth={2.2} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[#171717] font-medium text-[15px]">Publiskās istabas</p>
-                <p className="text-[#888780] text-[13px]">Pievienojies bez koda</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-[#888780] group-hover:translate-x-0.5 transition-transform shrink-0" />
-            </button>
-
-            <button
               onClick={() => setMode('daily')}
               className="group w-full flex items-center gap-4 px-5 py-4 hover:bg-[#F5EFE0] transition-colors text-left"
             >
@@ -1323,20 +1280,6 @@ export default function Home() {
               <div className="flex-1 min-w-0">
                 <p className="text-[#171717] font-medium text-[15px]">Dienas izaicinājums</p>
                 <p className="text-[#888780] text-[13px]">Viens sludinājums, visiem tas pats</p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-[#888780] group-hover:translate-x-0.5 transition-transform shrink-0" />
-            </button>
-
-            <button
-              onClick={() => setMode('leaderboard')}
-              className="group w-full flex items-center gap-4 px-5 py-4 hover:bg-[#F5EFE0] transition-colors text-left"
-            >
-              <div className="w-10 h-10 rounded-2xl bg-[#FCEBEB] flex items-center justify-center shrink-0 group-hover:-rotate-6 transition-transform">
-                <Trophy className="w-[18px] h-[18px] text-[#A32D2D]" strokeWidth={2.2} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[#171717] font-medium text-[15px]">Rangu tabula</p>
-                <p className="text-[#888780] text-[13px]">Visu spēlētāju rezultāti</p>
               </div>
               <ChevronRight className="w-4 h-4 text-[#888780] group-hover:translate-x-0.5 transition-transform shrink-0" />
             </button>
@@ -2037,19 +1980,6 @@ export default function Home() {
               {new Date().toLocaleDateString('lv-LV', { day: 'numeric', month: 'long' })}
             </h1>
           </div>
-
-          {!authUser && (
-            <div className="flex items-center gap-2 bg-white border border-[#171717]/10 rounded-2xl px-4 py-3 mb-4">
-              <Lock className="w-4 h-4 text-[#888780] shrink-0" />
-              <p className="text-[#5f5e5a] text-xs">
-                Vari pamēģināt, bet rezultāts netiks saglabāts.{' '}
-                <button onClick={() => setMode('login')} className="text-[#171717] font-bold underline">
-                  Ielogojies
-                </button>{' '}
-                lai piedalītos.
-              </p>
-            </div>
-          )}
 
           {dqPhotos.length > 0 && (
             <div className="relative mb-2">
