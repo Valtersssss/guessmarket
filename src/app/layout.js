@@ -8,7 +8,7 @@ const inter = Inter({
 
 export const metadata = {
   title: "Cikmaksā.lv",
-  description: "Minē sludinājumu cenas ar draugiem",
+  description: "Mini sludinājumu cenas ar draugiem",
 };
 
 export default function RootLayout({ children }) {
