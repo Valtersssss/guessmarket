@@ -10,6 +10,56 @@ const supabase = createClient(
 // ---- KONFIGURĀCIJA ----
 const DELAY_MS = 3000
 
+// Uzstādi uz null, lai skrapotu VISAS kategorijas.
+// Uzstādi uz masīvu ar atslēgām, lai skrapotu tikai tās (piem. tikai jaunās kategorijas).
+const ACTIVE_CATEGORY_KEYS = ['suņi', 'kaķi', 'eksotiskie_dzīvnieki', 'mēbeles', 'dārglietas']
+
+const ELECTRONICS_SUBCATEGORY_LABELS = {
+  'pc': 'Dators',
+  'noutbooks': 'Piezīmjdators',
+  'tablets': 'Planšetdators',
+  'game-consoles': 'Spēļu konsole',
+  'monitors': 'Monitors',
+  'printers-scanners-cartridges': 'Printeris / Skeneris',
+  'completing-pc': 'Dators (komplektējošie)',
+  'completing-notebook': 'Piezīmjdators (komplektējošie)',
+  'accessories': 'Datoru aksesuārs',
+  'cash-registers-systems-soft': 'Kases sistēma',
+  'multimedia': 'Multimedija',
+  'games': 'Datorspēle',
+  'hubs-switch-routers': 'Tīkla iekārta',
+  'repairing-pcs': 'Remonts',
+  'installation-of-program-providing': 'Programmatūra',
+  'other': 'Cita elektronika',
+}
+
+function extractElectronicsSubcategory(detailHref) {
+  const parts = detailHref.split('/').filter(Boolean)
+  const idx = parts.indexOf('computers')
+  if (idx !== -1 && parts.length > idx + 1) {
+    return parts[idx + 1]
+  }
+  return parts[parts.length - 2] || ''
+}
+
+function makeAnimalParseRow(fallbackLabel) {
+  return function parseRow($, cells, row) {
+    const breed = $(cells[0]).text().trim()
+    const age = $(cells[1]).text().trim()
+    const priceText = $(cells[2]).text().trim()
+    const region = row.find('.ads_region').text().trim()
+
+    const breedLabel = (breed && breed !== '-') ? breed : fallbackLabel
+    const ageLabel = (age && age !== '-') ? age : ''
+
+    return {
+      title: region ? `${breedLabel}, ${region}` : breedLabel,
+      details: ageLabel,
+      priceText,
+    }
+  }
+}
+
 const CATEGORIES = [
   {
     key: 'auto',
@@ -91,14 +141,77 @@ const CATEGORIES = [
     startUrl: 'https://www.ss.lv/lv/electronics/computers/today-5/',
     pagesToFetch: 10,
     minCells: 1,
-    parseRow($, cells, row, title) {
+    parseRow($, cells, row, title, detailHref) {
       const priceText = $(cells[cells.length - 1]).text().trim()
       const region = row.find('.ads_region').text().trim()
-      const shortTitle = title.length > 90 ? title.slice(0, 90).trim() + '…' : title
+
+      const subSlug = extractElectronicsSubcategory(detailHref)
+      const subLabel = ELECTRONICS_SUBCATEGORY_LABELS[subSlug] || 'Elektronika'
+      const cleanTitle = region ? `${subLabel}, ${region}` : subLabel
+
+      const trimmedAdText = title.length > 140 ? title.slice(0, 140).trim() + '…' : title
+
+      return {
+        title: cleanTitle,
+        details: trimmedAdText,
+        priceText,
+      }
+    },
+  },
+  {
+    key: 'suņi',
+    startUrl: 'https://www.ss.lv/lv/animals/dogs/today-5/',
+    pagesToFetch: 10,
+    minCells: 3,
+    parseRow: makeAnimalParseRow('Suns'),
+  },
+  {
+    key: 'kaķi',
+    startUrl: 'https://www.ss.lv/lv/animals/cats/today-5/',
+    pagesToFetch: 6,
+    minCells: 3,
+    parseRow: makeAnimalParseRow('Kaķis'),
+  },
+  {
+    key: 'eksotiskie_dzīvnieki',
+    startUrl: 'https://www.ss.lv/lv/animals/exotic-animals/today-5/',
+    pagesToFetch: 2,
+    minCells: 3,
+    parseRow: makeAnimalParseRow('Eksotisks dzīvnieks'),
+  },
+  {
+    key: 'mēbeles',
+    startUrl: 'https://www.ss.lv/lv/home-stuff/furniture-interior/today-5/',
+    pagesToFetch: 10,
+    minCells: 1,
+    parseRow($, cells, row, title) {
+      const priceText = $(cells[cells.length - 1]).text().trim()
+      const condition = $(cells[cells.length - 2]).text().trim()
+      const region = row.find('.ads_region').text().trim()
+
+      const conditionLabel = condition === 'jaun.' ? 'Jauns' : condition === 'lietota' ? 'Lietots' : ''
+      const shortTitle = title.length > 100 ? title.slice(0, 100).trim() + '…' : title
 
       return {
         title: shortTitle,
-        details: region || 'Datori un orgtehnika',
+        details: [region, conditionLabel].filter(Boolean).join(' · '),
+        priceText,
+      }
+    },
+  },
+  {
+    key: 'dārglietas',
+    startUrl: 'https://www.ss.lv/lv/home-stuff/jewelry/today-5/nophoto/',
+    pagesToFetch: 10,
+    minCells: 1,
+    parseRow($, cells, row, title) {
+      const priceText = $(cells[cells.length - 1]).text().trim()
+      const region = row.find('.ads_region').text().trim()
+      const shortTitle = title.length > 100 ? title.slice(0, 100).trim() + '…' : title
+
+      return {
+        title: shortTitle,
+        details: region || 'Dārglietas, rotaslietas',
         priceText,
       }
     },
@@ -117,8 +230,11 @@ function pageUrl(baseUrl, pageNumber) {
 
 function cleanPrice(text) {
   if (/mēn\.|dienā/i.test(text)) return null
-  const digits = text.replace(/[^\d]/g, '')
-  return digits ? parseInt(digits, 10) : null
+  const match = text.match(/[\d.,]+/)
+  if (!match) return null
+  const cleaned = match[0].replace(/,/g, '')
+  const num = parseFloat(cleaned)
+  return isNaN(num) ? null : Math.round(num)
 }
 
 async function fetchPage(url) {
@@ -147,7 +263,7 @@ function parseListings(html, categoryConfig) {
 
     if (!title || !detailHref || cells.length < categoryConfig.minCells) return
 
-    const parsed = categoryConfig.parseRow($, cells, row, title)
+    const parsed = categoryConfig.parseRow($, cells, row, title, detailHref)
     const price = cleanPrice(parsed.priceText)
     if (!price || price < 5) return
 
@@ -230,7 +346,13 @@ async function scrapeDetail(detailUrl) {
 async function main() {
   const allListings = []
 
-  for (const categoryConfig of CATEGORIES) {
+  const categoriesToRun = ACTIVE_CATEGORY_KEYS
+    ? CATEGORIES.filter((c) => ACTIVE_CATEGORY_KEYS.includes(c.key))
+    : CATEGORIES
+
+  console.log(`Skrapos šīs kategorijas: ${categoriesToRun.map((c) => c.key).join(', ')}`)
+
+  for (const categoryConfig of categoriesToRun) {
     console.log(`\n=== POSMS 1: ${categoryConfig.key} ===`)
 
     for (let page = 1; page <= categoryConfig.pagesToFetch; page++) {
@@ -267,7 +389,7 @@ async function main() {
       const detail = await scrapeDetail(listing.detailUrl)
       console.log(`[${i + 1}/${allListings.length}] (${listing.category}) ${listing.title} — ${detail.images.length} foto`)
 
-        finalListings.push({
+      finalListings.push({
         category: listing.category,
         title: listing.title,
         details: listing.details,
@@ -280,7 +402,7 @@ async function main() {
       })
     } catch (err) {
       console.error(`[${i + 1}/${allListings.length}] Kļūda: ${err.message}`)
-        finalListings.push({
+      finalListings.push({
         category: listing.category,
         title: listing.title,
         details: listing.details,

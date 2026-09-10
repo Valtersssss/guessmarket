@@ -1391,9 +1391,9 @@ export default function Home() {
             )}
 
             <p className="text-[#888780] text-xs font-semibold uppercase tracking-wide mb-3">Kategorija</p>
-            <div className="mb-7">
-              <div className="flex flex-wrap gap-2">
-                {CATEGORY_FILTERS.map((cat) => {
+            <div className="flex flex-wrap gap-2 mb-7">
+              {!animalsExpanded ? (
+                CATEGORY_FILTERS.map((cat) => {
                   const CatIcon = cat.icon
                   const isAnimalParent = cat.key === 'dzīvnieki'
                   const isSelected = isAnimalParent
@@ -1405,10 +1405,9 @@ export default function Home() {
                       key={cat.key}
                       onClick={() => {
                         if (isAnimalParent) {
-                          setAnimalsExpanded((prev) => !prev)
+                          setAnimalsExpanded(true)
                         } else {
                           setSelectedCategory(cat.key)
-                          setAnimalsExpanded(false)
                         }
                       }}
                       className={`flex items-center gap-1.5 rounded-full px-4 py-2.5 border-2 text-sm font-bold transition-all ${
@@ -1419,16 +1418,19 @@ export default function Home() {
                     >
                       <CatIcon className="w-4 h-4" strokeWidth={2.4} />
                       {cat.label}
-                      {isAnimalParent && (
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${animalsExpanded ? 'rotate-180' : ''}`} />
-                      )}
+                      {isAnimalParent && <ChevronDown className="w-3.5 h-3.5" />}
                     </button>
                   )
-                })}
-              </div>
-
-              {animalsExpanded && (
-                <div className="flex flex-wrap gap-2 mt-2 pl-3 border-l-2 border-[#8B5A2B]/30">
+                })
+              ) : (
+                <>
+                  <button
+                    onClick={() => setAnimalsExpanded(false)}
+                    className="flex items-center gap-1.5 rounded-full px-4 py-2.5 border-2 border-[#171717]/10 bg-white text-[#5f5e5a] text-sm font-bold transition-all hover:border-[#171717]/20"
+                  >
+                    <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
+                    Atpakaļ
+                  </button>
                   {ANIMAL_SUBCATEGORIES.map((sub) => {
                     const SubIcon = sub.icon
                     const isSelected = selectedCategory === sub.key
@@ -1440,18 +1442,18 @@ export default function Home() {
                           setSelectedCategory(sub.key)
                           setAnimalsExpanded(false)
                         }}
-                        className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 border-2 text-xs font-bold transition-all ${
+                        className={`flex items-center gap-1.5 rounded-full px-4 py-2.5 border-2 text-sm font-bold transition-all ${
                           isSelected
                             ? `${accent.bg} ${accent.border} ${accent.text}`
                             : 'bg-white border-[#171717]/10 text-[#5f5e5a] hover:border-[#171717]/20'
                         }`}
                       >
-                        <SubIcon className="w-3.5 h-3.5" strokeWidth={2.4} />
+                        <SubIcon className="w-4 h-4" strokeWidth={2.4} />
                         {sub.label}
                       </button>
                     )
                   })}
-                </div>
+                </>
               )}
             </div>
 
@@ -1546,9 +1548,9 @@ export default function Home() {
             />
 
             <p className="text-[#888780] text-xs font-semibold uppercase tracking-wide mb-3">Kategorija</p>
-            <div className="mb-7">
-              <div className="flex flex-wrap gap-2">
-                {CATEGORY_FILTERS.map((cat) => {
+            <div className="flex flex-wrap gap-2 mb-7">
+              {!animalsExpanded ? (
+                CATEGORY_FILTERS.map((cat) => {
                   const CatIcon = cat.icon
                   const isAnimalParent = cat.key === 'dzīvnieki'
                   const isSelected = isAnimalParent
@@ -1560,10 +1562,9 @@ export default function Home() {
                       key={cat.key}
                       onClick={() => {
                         if (isAnimalParent) {
-                          setAnimalsExpanded((prev) => !prev)
+                          setAnimalsExpanded(true)
                         } else {
                           setSelectedCategory(cat.key)
-                          setAnimalsExpanded(false)
                         }
                       }}
                       className={`flex items-center gap-1.5 rounded-full px-4 py-2.5 border-2 text-sm font-bold transition-all ${
@@ -1574,16 +1575,19 @@ export default function Home() {
                     >
                       <CatIcon className="w-4 h-4" strokeWidth={2.4} />
                       {cat.label}
-                      {isAnimalParent && (
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${animalsExpanded ? 'rotate-180' : ''}`} />
-                      )}
+                      {isAnimalParent && <ChevronDown className="w-3.5 h-3.5" />}
                     </button>
                   )
-                })}
-              </div>
-
-              {animalsExpanded && (
-                <div className="flex flex-wrap gap-2 mt-2 pl-3 border-l-2 border-[#8B5A2B]/30">
+                })
+              ) : (
+                <>
+                  <button
+                    onClick={() => setAnimalsExpanded(false)}
+                    className="flex items-center gap-1.5 rounded-full px-4 py-2.5 border-2 border-[#171717]/10 bg-white text-[#5f5e5a] text-sm font-bold transition-all hover:border-[#171717]/20"
+                  >
+                    <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
+                    Atpakaļ
+                  </button>
                   {ANIMAL_SUBCATEGORIES.map((sub) => {
                     const SubIcon = sub.icon
                     const isSelected = selectedCategory === sub.key
@@ -1595,18 +1599,18 @@ export default function Home() {
                           setSelectedCategory(sub.key)
                           setAnimalsExpanded(false)
                         }}
-                        className={`flex items-center gap-1.5 rounded-full px-3.5 py-2 border-2 text-xs font-bold transition-all ${
+                        className={`flex items-center gap-1.5 rounded-full px-4 py-2.5 border-2 text-sm font-bold transition-all ${
                           isSelected
                             ? `${accent.bg} ${accent.border} ${accent.text}`
                             : 'bg-white border-[#171717]/10 text-[#5f5e5a] hover:border-[#171717]/20'
                         }`}
                       >
-                        <SubIcon className="w-3.5 h-3.5" strokeWidth={2.4} />
+                        <SubIcon className="w-4 h-4" strokeWidth={2.4} />
                         {sub.label}
                       </button>
                     )
                   })}
-                </div>
+                </>
               )}
             </div>
 
