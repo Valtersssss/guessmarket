@@ -66,6 +66,117 @@ const CATEGORY_ACCENT = {
   dārglietas: { bg: 'bg-[#B8932F]', border: 'border-[#B8932F]', text: 'text-white' },
 }
 
+const RESULT_STAMPS = [
+  {
+    min: 97,
+    bg: 'bg-[#3B6D11]',
+    text: 'text-[#EAF3DE]',
+    labels: [
+      'Tu šo redzēji sapnī?',
+      'Nu tu gan esi cilvēks.',
+      'Kā tu to izrēķināji?',
+      'Mamma tev palīdzēja?',
+      'Beidz izlikties.',
+      'Šis jau ir aizdomīgi.',
+      'Galva strādā.',
+      'Tev šodien viss sanāk.',
+      'Kaut ko tomēr māki.',
+      'Nu labi, gudriniek.',
+    ],
+  },
+  {
+    min: 90,
+    bg: 'bg-[#639922]',
+    text: 'text-[#EAF3DE]',
+    labels: [
+      'O, pamodies.',
+      'Šoreiz trāpīji, antiņ.',
+      'Nu jau runājam.',
+      'Galva nav tikai cepurei.',
+      'Ir smadzenes tomēr.',
+      'Šis bija tīri cilvēciski.',
+      'Varbūt tev ir cerība.',
+      'Nu re, vari taču.',
+      'Beidzot kaut kas pareizs.',
+      'Šito var atstāt.',
+      'Nu tu dod.',
+    ],
+  },
+  {
+    min: 60,
+    bg: 'bg-[#EF9F27]',
+    text: 'text-[#412402]',
+    labels: [
+      'Kaut kur jau esi.',
+      'Virziens pareizs, kapteini.',
+      'Cipari tev nepatīk?',
+      'Nu, gandrīz, antiņ.',
+      'Izej izvēdini galvu.',
+      'Paskaties vēlreiz.',
+      'Tirgus ir tur, nevis tur.',
+      'Tu minēji vai domāji?',
+      'Galvenais, ka pārliecība ir.',
+      'Kaut kur kosmosā trāpīji.',
+    ],
+  },
+  {
+    min: 30,
+    bg: 'bg-[#D85A30]',
+    text: 'text-[#FAECE7]',
+    labels: [
+      'Kosmonauts esi?',
+      'Tu vispār skaties?',
+      'Izej izvēdini galvu, antiņ.',
+      'Kas tev šo ciparu pateica?',
+      'Nu galīgi garām.',
+      'Tu cenu ar acīm noteici?',
+      'Šis bija no pirksta.',
+      'Atgriezies uz Zemes.',
+      'Kur tu to rāvi?',
+      'Smadzenes šodien brīvdienās?',
+      'Cenu noteici pēc horoskopa?',
+      'Šis nav tas tirgus, brāl.',
+      'Galva šodien nestrādā?',
+      'Pārdevējs tagad smejas.',
+      'Ciparus redzi pirmo reizi?',
+      'Tu esi pārliecināts?',
+    ],
+  },
+  {
+    min: 0,
+    bg: 'bg-[#A32D2D]',
+    text: 'text-[#FCEBEB]',
+    labels: [
+      'Brāl, atgriezies uz Zemes.',
+      'Kosmosa programma atcelta.',
+      'Tu esi citā realitātē.',
+      'Izej ārā, paelpo.',
+      'Kas ar tevi notiek?',
+      'Šis jau ir talants.',
+      'Cenu noteici pēc zvaigznēm?',
+      'Tev viss labi?',
+      'Es pat nezinu, ko teikt.',
+      'Antiņ, aizver sludinājumu.',
+      'Šito pat Google neatradīs.',
+      'Tu spēlē citu spēli.',
+      'Kas tev galvā notiek?',
+      'Tu šito nopietni?',
+      'Aizver SS.LV un ej pastaigā.',
+      'Tev laikam ir savs tirgus.',
+      'Tu esi kosmosā.',
+      'Šis bija personīgi.',
+    ],
+  },
+]
+
+function getResultStamp(score, seed) {
+  const tier = RESULT_STAMPS.find((t) => score >= t.min) || RESULT_STAMPS[RESULT_STAMPS.length - 1]
+  let hash = 0
+  const str = String(seed)
+  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0
+  return { label: tier.labels[hash % tier.labels.length], bg: tier.bg, text: tier.text }
+}
+
 // Konti pagaidām izslēgti. Uzliec true, lai atkal ieslēgtu (kopā ar ieejas punktiem izvēlnē).
 const ACCOUNTS_ENABLED = false
 
@@ -2068,11 +2179,7 @@ export default function Home() {
             )}
 
             {dailyRevealed && (() => {
-              const dailyStamp = dailyScore >= 90
-                ? { label: 'Trāpīji!', bg: 'bg-[#639922]', text: 'text-[#EAF3DE]' }
-                : dailyScore >= 60
-                ? { label: 'Tuvu!', bg: 'bg-[#EF9F27]', text: 'text-[#412402]' }
-                : { label: 'Garām', bg: 'bg-[#D85A30]', text: 'text-[#FAECE7]' }
+              const dailyStamp = getResultStamp(dailyScore, dq.id)
               return (
                 <div className="flex flex-col gap-3">
                   <div className="text-center py-2">
@@ -2723,11 +2830,7 @@ export default function Home() {
     setPhotoIndex((prev) => (prev === photos.length - 1 ? 0 : prev + 1))
   }
 
-  const resultStamp = lastRoundScore >= 90
-    ? { label: 'Trāpīji!', bg: 'bg-[#639922]', text: 'text-[#EAF3DE]' }
-    : lastRoundScore >= 60
-    ? { label: 'Tuvu!', bg: 'bg-[#EF9F27]', text: 'text-[#412402]' }
-    : { label: 'Garām', bg: 'bg-[#D85A30]', text: 'text-[#FAECE7]' }
+  const resultStamp = getResultStamp(lastRoundScore, question.id)
 
   return (
     <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
