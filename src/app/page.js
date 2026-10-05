@@ -66,6 +66,9 @@ const CATEGORY_ACCENT = {
   dārglietas: { bg: 'bg-[#B8932F]', border: 'border-[#B8932F]', text: 'text-white' },
 }
 
+// Konti pagaidām izslēgti. Uzliec true, lai atkal ieslēgtu (kopā ar ieejas punktiem izvēlnē).
+const ACCOUNTS_ENABLED = false
+
 const PAGE_BG_PATTERN = `url("data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180">' +
     '<text x="10" y="45" font-family="Arial, sans-serif" font-size="34" fill="#171717" opacity="0.045" transform="rotate(-12 10 45)">€</text>' +
@@ -651,6 +654,10 @@ export default function Home() {
 
     async function loadSession() {
       const { data: { session } } = await supabase.auth.getSession()
+      if (!ACCOUNTS_ENABLED) {
+        if (session) await supabase.auth.signOut()
+        return
+      }
       if (mounted && session?.user) {
         setAuthUser(session.user)
         fetchProfile(session.user.id)
@@ -659,6 +666,7 @@ export default function Home() {
     loadSession()
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!ACCOUNTS_ENABLED) return
       if (session?.user) {
         setAuthUser(session.user)
         fetchProfile(session.user.id)
@@ -1156,14 +1164,14 @@ export default function Home() {
   if (mode === 'menu') {
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-sm md:max-w-lg">
-          <div className="flex items-baseline justify-between mb-8 px-1">
+          <div className="text-center mb-8">
             <div className="text-3xl font-black tracking-tight text-[#171717]">
               Cikmaksā<span className="text-[#EF9F27]">.lv</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-[#5f5e5a] text-xs font-medium text-right">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
-              {onlinePlayers} spēlē tagad
             </div>
           </div>
 
@@ -1297,6 +1305,10 @@ export default function Home() {
   if (mode === 'solo-setup') {
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-sm md:max-w-lg">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-black tracking-tight text-[#171717] mb-1.5">Spēlēt solo</h1>
@@ -1472,6 +1484,10 @@ export default function Home() {
   if (mode === 'create-room') {
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-sm md:max-w-lg">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-black tracking-tight text-[#171717] mb-1.5">Izveidot istabu</h1>
@@ -1649,6 +1665,10 @@ export default function Home() {
   if (mode === 'join-room') {
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-sm md:max-w-lg">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-black tracking-tight text-[#171717] mb-1.5">Pievienoties istabai</h1>
@@ -1706,6 +1726,10 @@ export default function Home() {
   if (mode === 'login') {
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-sm md:max-w-lg">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-semibold tracking-tight text-[#171717] mb-1.5">Ielogoties</h1>
@@ -1771,6 +1795,10 @@ export default function Home() {
   if (mode === 'signup') {
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-sm md:max-w-lg">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-semibold tracking-tight text-[#171717] mb-1.5">Reģistrēties</h1>
@@ -1836,6 +1864,10 @@ export default function Home() {
   if (mode === 'profile') {
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-sm md:max-w-lg">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#EF9F27] mb-4 -rotate-3">
@@ -1939,6 +1971,10 @@ export default function Home() {
     if (dailyLoading) {
       return (
         <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
           <div className="flex flex-col items-center gap-3">
             <div className="w-8 h-8 border-2 border-[#EF9F27] border-t-transparent rounded-full animate-spin" />
             <p className="text-[#5f5e5a] text-sm">Ielādē dienas izaicinājumu...</p>
@@ -1950,6 +1986,10 @@ export default function Home() {
     if (!dailyQuestion) {
       return (
         <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-6" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
           <div className="text-center">
             <p className="text-[#5f5e5a] text-sm mb-4">Neizdevās ielādēt dienas izaicinājumu.</p>
             <button
@@ -1970,6 +2010,10 @@ export default function Home() {
 
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-sm md:max-w-lg">
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-1.5 text-[#854F0B] text-xs font-bold uppercase tracking-wide mb-2">
@@ -2068,7 +2112,7 @@ export default function Home() {
             })()}
           </div>
 
-          {dailyLeaderboard.length > 0 && (
+          {ACCOUNTS_ENABLED && dailyLeaderboard.length > 0 && (
             <div className="bg-white rounded-3xl border border-[#171717]/10 divide-y divide-[#171717]/[0.06] overflow-hidden mb-4">
               <p className="text-[#888780] text-xs font-semibold uppercase tracking-wide px-4 py-3">Šodienas labākie</p>
               {dailyLeaderboard.map((r, i) => (
@@ -2098,6 +2142,10 @@ export default function Home() {
   if (mode === 'leaderboard') {
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-sm md:max-w-lg">
           <div className="text-center mb-6">
             <h1 className="text-3xl font-black tracking-tight text-[#171717] mb-1">Rangu tabula</h1>
@@ -2208,6 +2256,10 @@ export default function Home() {
   if (mode === 'public-rooms') {
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-sm md:max-w-lg">
           <div className="text-center mb-6">
             <h1 className="text-3xl font-black tracking-tight text-[#171717] mb-1">Publiskās istabas</h1>
@@ -2288,6 +2340,10 @@ export default function Home() {
       const maxReverseScore = reverseRounds.length * 100
       return (
         <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-6" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
           <div className="w-full max-w-sm md:max-w-lg">
             <div className="bg-white rounded-3xl border border-[#171717]/10 p-8 text-center shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
               <div className="inline-block bg-[#EF9F27] rounded-full p-4 -rotate-3 mb-4">
@@ -2317,6 +2373,10 @@ export default function Home() {
     if (!round) {
       return (
         <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
           <Loader2 className="w-6 h-6 text-[#888780] animate-spin" />
         </div>
       )
@@ -2324,6 +2384,10 @@ export default function Home() {
 
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-md md:max-w-lg">
           <div className="flex items-center justify-between mb-4 px-1">
             <span className="text-[#888780] text-xs font-semibold uppercase tracking-wide">
@@ -2385,6 +2449,10 @@ export default function Home() {
   if (mode === 'lobby') {
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-sm md:max-w-lg">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-black tracking-tight text-[#171717] mb-1">Istaba</h1>
@@ -2482,6 +2550,10 @@ export default function Home() {
   if (questions.length === 0) {
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-[#EF9F27] border-t-transparent rounded-full animate-spin" />
           <p className="text-[#5f5e5a] text-sm">Ielādē spēli...</p>
@@ -2505,6 +2577,10 @@ export default function Home() {
 
     return (
       <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-6" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
         <div className="w-full max-w-sm md:max-w-lg animate-[fadeIn_0.4s_ease-out]">
           <div className="bg-white rounded-3xl border border-[#171717]/10 p-8 text-center shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
             <div className="inline-block bg-[#EF9F27] rounded-full p-4 -rotate-3 mb-4">
@@ -2655,6 +2731,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#F5EFE0] flex items-center justify-center p-4" style={{ backgroundImage: PAGE_BG_PATTERN, backgroundRepeat: 'repeat' }}>
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm border border-[#171717]/10 rounded-full px-3 py-1.5 text-[#5f5e5a] text-xs font-semibold shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+        <span className="w-1.5 h-1.5 rounded-full bg-[#639922] inline-block" />
+        {onlinePlayers} spēlē tagad
+      </div>
       <div className="w-full max-w-md md:max-w-lg">
         <div className="flex items-center justify-between mb-3 px-1">
           <span className="text-[#888780] text-xs font-semibold uppercase tracking-wide">
